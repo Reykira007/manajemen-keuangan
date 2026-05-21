@@ -1,5 +1,12 @@
 # Manajemen Keuangan
 
+![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
+![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38bdf8?logo=tailwindcss&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-orange?logo=firebase&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 Aplikasi web untuk mencatat keuangan pribadi / proyek (mis. Pembangunan Rumah, Usaha Perikanan). **Login email/password**, data tersimpan **aman di Firebase Cloud**, **sinkron antar device** (HP & laptop), dan ada fitur **Export/Import** sebagai backup tambahan.
 
 ## Tech Stack
