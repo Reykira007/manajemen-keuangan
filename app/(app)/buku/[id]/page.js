@@ -15,6 +15,7 @@ import {
   withRunningBalance,
 } from "../../../lib/storage";
 import { displayCategoryLabel, getCategoryLabel } from "../../../lib/categories";
+import { getQuickActions, getTemplate } from "../../../lib/templates";
 import { formatDate, formatRupiah } from "../../../lib/format";
 
 export default function BukuDetailPage() {
@@ -27,7 +28,12 @@ export default function BukuDetailPage() {
   const [ready, setReady] = useState(false);
   const [bookLoaded, setBookLoaded] = useState(false);
 
-  const [modal, setModal] = useState({ open: false, type: "in", initial: null });
+  const [modal, setModal] = useState({
+    open: false,
+    type: "in",
+    initial: null,
+    preset: null,
+  });
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -101,7 +107,7 @@ export default function BukuDetailPage() {
   };
 
   const onEditTx = (tx) => {
-    setModal({ open: true, type: tx.type, initial: tx });
+    setModal({ open: true, type: tx.type, initial: tx, preset: null });
   };
 
   return (
@@ -139,20 +145,17 @@ export default function BukuDetailPage() {
           <SummaryBox label="Sisa Saldo" value={summary.balance} tone="neutral" />
         </section>
 
-        <section className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setModal({ open: true, type: "in", initial: null })}
-            className="flex items-center justify-center gap-2 bg-income-600 hover:bg-income-700 text-white font-medium py-3 rounded-lg shadow-sm"
-          >
-            <PlusIcon /> Tambah Kas Masuk
-          </button>
-          <button
-            onClick={() => setModal({ open: true, type: "out", initial: null })}
-            className="flex items-center justify-center gap-2 bg-expense-600 hover:bg-expense-700 text-white font-medium py-3 rounded-lg shadow-sm"
-          >
-            <MinusIcon /> Tambah Kas Keluar
-          </button>
-        </section>
+        <QuickActionsBar
+          book={book}
+          onAction={(action) =>
+            setModal({
+              open: true,
+              type: action.preset.type,
+              initial: null,
+              preset: action.preset,
+            })
+          }
+        />
 
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -324,11 +327,51 @@ export default function BukuDetailPage() {
         type={modal.type}
         bookId={id}
         initial={modal.initial}
+        preset={modal.preset}
         onClose={() =>
-          setModal({ open: false, type: modal.type, initial: null })
+          setModal({ open: false, type: modal.type, initial: null, preset: null })
         }
       />
     </>
+  );
+}
+
+function QuickActionsBar({ book, onAction }) {
+  const actions = getQuickActions(book?.template);
+  const template = getTemplate(book?.template);
+
+  return (
+    <section className="space-y-2">
+      {template && template.id !== "custom" && template.tips ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
+          💡 {template.tips}
+        </p>
+      ) : null}
+      <div
+        className={`grid gap-2 ${
+          actions.length <= 2
+            ? "grid-cols-2"
+            : actions.length === 3
+            ? "grid-cols-2 sm:grid-cols-3"
+            : "grid-cols-2 sm:grid-cols-4"
+        }`}
+      >
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            onClick={() => onAction(action)}
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 font-medium py-3 px-2 rounded-lg shadow-sm text-white text-sm text-center ${
+              action.tone === "income"
+                ? "bg-income-600 hover:bg-income-700"
+                : "bg-expense-600 hover:bg-expense-700"
+            }`}
+          >
+            <span className="text-base sm:text-lg">{action.icon}</span>
+            <span className="leading-tight">{action.label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

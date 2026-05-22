@@ -20,13 +20,15 @@ export default function TransactionFormModal({
   type, // "in" | "out"
   bookId,
   initial = null, // bila edit: { id, date, description, category, quantity, unitPrice, type }
+  preset = null, // { type, category, description, simpleMode, title } - pre-fill dari quick action template
   onClose,
   onSaved,
 }) {
   const { user } = useAuth();
   const isEdit = !!initial;
-  const actualType = initial?.type || type;
+  const actualType = initial?.type || preset?.type || type;
   const needsBookPicker = !bookId && !isEdit; // dipanggil dari FAB
+  const simpleMode = !isEdit && (preset?.simpleMode || false);
 
   const [date, setDate] = useState(todayISO());
   const [description, setDescription] = useState("");
@@ -67,8 +69,9 @@ export default function TransactionFormModal({
         setUnitPrice(formatGroup(String(initial.unitPrice || "")));
       } else {
         setDate(todayISO());
-        setDescription("");
-        setCategory("");
+        setDescription(preset?.description || "");
+        setCategory(preset?.category || "");
+        // Di simple mode, qty selalu = 1
         setQuantity("1");
         setUnitPrice("");
         setSelectedBookId("");
@@ -76,7 +79,7 @@ export default function TransactionFormModal({
       setError("");
       setSaving(false);
     }
-  }, [open, initial]);
+  }, [open, initial, preset]);
 
   const qtyNum = Number(quantity.replace(/[^\d.]/g, "")) || 0;
   const unitNum = Number(unitPrice.replace(/\D/g, "")) || 0;
@@ -95,16 +98,23 @@ export default function TransactionFormModal({
   if (!open) return null;
 
   const isIn = actualType === "in";
+  const defaultTitle = isIn
+    ? isEdit
+      ? "Edit Kas Masuk"
+      : "Tambah Kas Masuk"
+    : isEdit
+    ? "Edit Kas Keluar"
+    : "Tambah Kas Keluar";
   const accent = isIn
     ? {
-        title: isEdit ? "Edit Kas Masuk" : "Tambah Kas Masuk",
+        title: preset?.title || defaultTitle,
         btn: "bg-income-600 hover:bg-income-700",
         ring: "focus:ring-income-100 focus:border-income-500",
         chip: "bg-income-50 text-income-700",
         totalColor: "text-income-700",
       }
     : {
-        title: isEdit ? "Edit Kas Keluar" : "Tambah Kas Keluar",
+        title: preset?.title || defaultTitle,
         btn: "bg-expense-600 hover:bg-expense-700",
         ring: "focus:ring-expense-100 focus:border-expense-500",
         chip: "bg-expense-50 text-expense-700",
@@ -122,12 +132,14 @@ export default function TransactionFormModal({
       setError("Keterangan wajib diisi.");
       return;
     }
-    if (qtyNum <= 0) {
+    // Di simple mode, qty di-paksa = 1 (unitPrice = jumlah total)
+    const finalQty = simpleMode ? 1 : qtyNum;
+    if (!simpleMode && qtyNum <= 0) {
       setError("Jumlah barang harus lebih dari 0.");
       return;
     }
     if (unitNum <= 0) {
-      setError("Harga satuan harus lebih dari 0.");
+      setError(simpleMode ? "Jumlah wajib diisi." : "Harga satuan harus lebih dari 0.");
       return;
     }
     if (!user) return;
@@ -139,7 +151,7 @@ export default function TransactionFormModal({
           description,
           category,
           categoryLabel: selectedCategoryLabel,
-          quantity: qtyNum,
+          quantity: finalQty,
           unitPrice: unitNum,
         });
       } else {
@@ -150,7 +162,7 @@ export default function TransactionFormModal({
           description,
           category,
           categoryLabel: selectedCategoryLabel,
-          quantity: qtyNum,
+          quantity: finalQty,
           unitPrice: unitNum,
         });
       }
@@ -298,30 +310,11 @@ export default function TransactionFormModal({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {simpleMode ? (
+            /* SIMPLE MODE: cuma 1 field Jumlah Total */
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Jumlah Barang
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={quantity}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^\d.]/g, "");
-                  setQuantity(v);
-                  setError("");
-                }}
-                placeholder="1"
-                className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
-              />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Mis. 40 (keping), 2 (kg)
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Harga Satuan
+                Jumlah <span className="text-expense-600">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
@@ -337,26 +330,79 @@ export default function TransactionFormModal({
                     setError("");
                   }}
                   placeholder="0"
-                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                  className={`w-full pl-10 pr-3 py-3 text-lg rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 font-semibold ${accent.ring}`}
+                  autoFocus={!!preset?.description}
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Harga per unit</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Total jumlah uang
+              </p>
             </div>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Total</div>
-              <div className="text-[11px] text-slate-400">
-                {qtyNum > 0 && unitNum > 0
-                  ? `${qtyNum} × ${formatRupiah(unitNum)}`
-                  : "Isi jumlah & harga satuan"}
+          ) : (
+            /* DETAILED MODE: qty × harga satuan */
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Jumlah Barang
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={quantity}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^\d.]/g, "");
+                    setQuantity(v);
+                    setError("");
+                  }}
+                  placeholder="1"
+                  className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Mis. 40 (keping), 2 (kg)
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Harga Satuan
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={unitPrice}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      setUnitPrice(formatGroup(digits));
+                      setError("");
+                    }}
+                    placeholder="0"
+                    className={`w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">Harga per unit</p>
               </div>
             </div>
-            <div className={`text-lg font-bold ${accent.totalColor}`}>
-              {formatRupiah(total)}
+          )}
+
+          {/* Preview Total - tampil di detailed mode (qty > 1 jadi total ≠ harga satuan) */}
+          {!simpleMode ? (
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Total</div>
+                <div className="text-[11px] text-slate-400">
+                  {qtyNum > 0 && unitNum > 0
+                    ? `${qtyNum} × ${formatRupiah(unitNum)}`
+                    : "Isi jumlah & harga satuan"}
+                </div>
+              </div>
+              <div className={`text-lg font-bold ${accent.totalColor}`}>
+                {formatRupiah(total)}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {error ? <p className="text-xs text-expense-600">{error}</p> : null}
 
