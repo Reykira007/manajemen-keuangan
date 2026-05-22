@@ -9,7 +9,7 @@ import {
   subscribeAllTransactions,
   subscribeBooks,
 } from "../../lib/storage";
-import { getCategoryLabel } from "../../lib/categories";
+import { displayCategoryLabel, getCategoryLabel } from "../../lib/categories";
 import { formatDate, formatRupiah } from "../../lib/format";
 
 export default function SemuaTransaksiPage() {
@@ -64,7 +64,7 @@ export default function SemuaTransaksiPage() {
       .filter((t) => {
         if (!q) return true;
         const desc = (t.description || "").toLowerCase();
-        const cat = getCategoryLabel(t.type, t.category).toLowerCase();
+        const cat = displayCategoryLabel(t).toLowerCase();
         const bookName = (bookMap[t.bookId]?.name || "").toLowerCase();
         return desc.includes(q) || cat.includes(q) || bookName.includes(q);
       })
@@ -183,8 +183,8 @@ export default function SemuaTransaksiPage() {
                         <td className="px-5 py-3 text-slate-900 dark:text-slate-100">
                           <div>{t.description}</div>
                           <div className="text-[11px] text-slate-400 mt-0.5 space-x-2">
-                            {!t.isOpening && t.category ? (
-                              <span>{getCategoryLabel(t.type, t.category)}</span>
+                            {!t.isOpening && displayCategoryLabel(t) ? (
+                              <span>{displayCategoryLabel(t)}</span>
                             ) : null}
                             {!t.isOpening && t.quantity > 1 && t.unitPrice > 0 ? (
                               <span>

@@ -10,9 +10,10 @@ export default function QuickAddFab() {
   const [modal, setModal] = useState({ open: false, type: "in" });
 
   // Sembunyikan di halaman yang sudah punya tombol tambah eksplisit
-  // (detail buku, edit buku, buat buku, halaman auth)
+  // (detail buku, edit buku, buat buku, halaman auth, pengaturan)
   const hidden =
     pathname.startsWith("/buku/") ||
+    pathname.startsWith("/pengaturan") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/forgot-password");

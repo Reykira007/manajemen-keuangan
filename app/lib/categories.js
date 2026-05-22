@@ -53,6 +53,16 @@ export function getCategoryLabel(type, id) {
   return getCategory(type, id)?.label || "Lain-lain";
 }
 
+// Untuk display di tabel/list: prefer categoryLabel (snapshot label dari
+// kategori saat transaksi disimpan). Fallback ke lookup default kategori
+// berdasarkan ID. Berguna karena custom category tidak ada di constants.
+export function displayCategoryLabel(transaction) {
+  if (!transaction) return "";
+  if (transaction.categoryLabel) return transaction.categoryLabel;
+  if (!transaction.category) return "";
+  return getCategory(transaction.type, transaction.category)?.label || "";
+}
+
 // Kategori-kategori yang termasuk "penjualan" untuk perhitungan Laba Rugi.
 // Modal awal/tambahan & pinjaman TIDAK termasuk penjualan (bukan omzet).
 export const SALES_CATEGORIES = new Set(["penjualan", "pendapatan"]);

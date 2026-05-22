@@ -20,14 +20,17 @@ import { db } from "./firebase";
 
 /* =========================================================
    STRUKTUR DATA DI FIRESTORE
-   users/{uid}/books/{bookId}        -> Book document
-   users/{uid}/transactions/{txId}   -> Transaction document
+   users/{uid}/books/{bookId}         -> Book document
+   users/{uid}/transactions/{txId}    -> Transaction document
+   users/{uid}/categories/{catId}     -> Custom category (user-defined)
    ========================================================= */
 
 const booksCol = (uid) => collection(db, "users", uid, "books");
 const bookDoc = (uid, id) => doc(db, "users", uid, "books", id);
 const txCol = (uid) => collection(db, "users", uid, "transactions");
 const txDoc = (uid, id) => doc(db, "users", uid, "transactions", id);
+const catCol = (uid) => collection(db, "users", uid, "categories");
+const catDoc = (uid, id) => doc(db, "users", uid, "categories", id);
 
 function snapToBook(s) {
   const data = s.data() || {};
@@ -52,6 +55,7 @@ function snapToTx(s) {
     date: data.date, // YYYY-MM-DD
     description: data.description || "",
     category: data.category || "",
+    categoryLabel: data.categoryLabel || "",
     quantity: Number(data.quantity) || 0,
     unitPrice: Number(data.unitPrice) || 0,
     amount: Number(data.amount) || 0,
@@ -59,6 +63,16 @@ function snapToTx(s) {
       data.createdAt instanceof Timestamp
         ? data.createdAt.toDate().toISOString()
         : data.createdAt || new Date().toISOString(),
+  };
+}
+
+function snapToCategory(s) {
+  const data = s.data() || {};
+  return {
+    id: s.id,
+    type: data.type || "out",
+    label: data.label || "",
+    custom: true,
   };
 }
 
@@ -149,7 +163,7 @@ export async function getBookTransactions(uid, bookId) {
 
 export async function addTransaction(
   uid,
-  { bookId, type, date, description, category, quantity, unitPrice }
+  { bookId, type, date, description, category, categoryLabel, quantity, unitPrice }
 ) {
   const qty = Math.max(0, Number(quantity) || 0);
   const unit = Math.max(0, Number(unitPrice) || 0);
@@ -160,6 +174,7 @@ export async function addTransaction(
     date,
     description: (description || "").trim(),
     category: category || "",
+    categoryLabel: categoryLabel || "",
     quantity: qty,
     unitPrice: unit,
     amount,
@@ -172,6 +187,7 @@ export async function addTransaction(
     date,
     description,
     category: category || "",
+    categoryLabel: categoryLabel || "",
     quantity: qty,
     unitPrice: unit,
     amount,
@@ -182,7 +198,7 @@ export async function addTransaction(
 export async function updateTransaction(
   uid,
   id,
-  { date, description, category, quantity, unitPrice }
+  { date, description, category, categoryLabel, quantity, unitPrice }
 ) {
   const qty = Math.max(0, Number(quantity) || 0);
   const unit = Math.max(0, Number(unitPrice) || 0);
@@ -192,6 +208,7 @@ export async function updateTransaction(
       date,
       description: (description || "").trim(),
       category: category || "",
+      categoryLabel: categoryLabel || "",
       quantity: qty,
       unitPrice: unit,
       amount: qty * unit,
@@ -224,6 +241,46 @@ export function subscribeBookTransactions(uid, bookId, handler) {
       return a.createdAt.localeCompare(b.createdAt);
     });
     handler(list);
+  });
+}
+
+/* ===========================
+   CUSTOM CATEGORIES (user-defined)
+   =========================== */
+
+export async function getCustomCategories(uid) {
+  if (!uid) return [];
+  const snap = await getDocs(catCol(uid));
+  return snap.docs.map(snapToCategory);
+}
+
+export async function addCustomCategory(uid, { type, label }) {
+  const trimmed = (label || "").trim();
+  if (!trimmed) throw new Error("Nama kategori wajib diisi");
+  if (!["in", "out"].includes(type))
+    throw new Error("Tipe kategori harus 'in' atau 'out'");
+  const ref = await addDoc(catCol(uid), {
+    type,
+    label: trimmed,
+    createdAt: serverTimestamp(),
+  });
+  return { id: ref.id, type, label: trimmed, custom: true };
+}
+
+export async function updateCustomCategory(uid, id, { label }) {
+  const trimmed = (label || "").trim();
+  if (!trimmed) throw new Error("Nama kategori wajib diisi");
+  await setDoc(catDoc(uid, id), { label: trimmed }, { merge: true });
+}
+
+export async function deleteCustomCategory(uid, id) {
+  await deleteDoc(catDoc(uid, id));
+}
+
+export function subscribeCustomCategories(uid, handler) {
+  if (!uid) return () => {};
+  return onSnapshot(catCol(uid), (snap) => {
+    handler(snap.docs.map(snapToCategory));
   });
 }
 
@@ -342,6 +399,7 @@ export async function importAll(uid, payload, { replace = false } = {}) {
       date: t.date,
       description: t.description || "",
       category: t.category || "",
+      categoryLabel: t.categoryLabel || "",
       quantity: Number(t.quantity) || 0,
       unitPrice: Number(t.unitPrice) || 0,
       amount: Number(t.amount) || 0,

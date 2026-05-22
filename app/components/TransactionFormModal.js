@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   addTransaction,
   subscribeBooks,
+  subscribeCustomCategories,
   updateTransaction,
 } from "../lib/storage";
 import { getCategoriesFor } from "../lib/categories";
@@ -33,6 +35,7 @@ export default function TransactionFormModal({
   const [unitPrice, setUnitPrice] = useState("");
   const [selectedBookId, setSelectedBookId] = useState("");
   const [books, setBooks] = useState([]);
+  const [customCategories, setCustomCategories] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -46,6 +49,13 @@ export default function TransactionFormModal({
     });
     return unsub;
   }, [user, needsBookPicker, open]);
+
+  // Load custom categories (user-defined)
+  useEffect(() => {
+    if (!user || !open) return;
+    const unsub = subscribeCustomCategories(user.uid, setCustomCategories);
+    return unsub;
+  }, [user, open]);
 
   useEffect(() => {
     if (open) {
@@ -72,7 +82,15 @@ export default function TransactionFormModal({
   const unitNum = Number(unitPrice.replace(/\D/g, "")) || 0;
   const total = useMemo(() => qtyNum * unitNum, [qtyNum, unitNum]);
 
-  const categories = getCategoriesFor(actualType);
+  const defaultCats = getCategoriesFor(actualType);
+  const customCats = customCategories.filter((c) => c.type === actualType);
+  const allCategories = [...defaultCats, ...customCats];
+
+  // Lookup label dari kategori yang dipilih untuk disimpan snapshot
+  const selectedCategoryLabel = useMemo(() => {
+    const found = allCategories.find((c) => c.id === category);
+    return found?.label || "";
+  }, [allCategories, category]);
 
   if (!open) return null;
 
@@ -120,6 +138,7 @@ export default function TransactionFormModal({
           date,
           description,
           category,
+          categoryLabel: selectedCategoryLabel,
           quantity: qtyNum,
           unitPrice: unitNum,
         });
@@ -130,6 +149,7 @@ export default function TransactionFormModal({
           date,
           description,
           category,
+          categoryLabel: selectedCategoryLabel,
           quantity: qtyNum,
           unitPrice: unitNum,
         });
@@ -241,20 +261,40 @@ export default function TransactionFormModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Kategori
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Kategori
+              </label>
+              <Link
+                href="/pengaturan/kategori"
+                onClick={onClose}
+                className="text-xs text-income-700 hover:underline"
+              >
+                Kelola kategori
+              </Link>
+            </div>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
             >
               <option value="">— Pilih kategori (opsional) —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
+              <optgroup label="Default">
+                {defaultCats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </optgroup>
+              {customCats.length > 0 ? (
+                <optgroup label="Kategori Saya">
+                  {customCats.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
           </div>
 
