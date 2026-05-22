@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import TransactionFormModal from "./TransactionFormModal";
 
@@ -9,10 +9,20 @@ export default function QuickAddFab() {
   const [openMenu, setOpenMenu] = useState(false);
   const [modal, setModal] = useState({ open: false, type: "in" });
 
-  // Sembunyikan di halaman yang sudah punya tombol tambah eksplisit
-  // (detail buku, edit buku, buat buku, halaman auth, pengaturan)
+  // Extract bookId dari URL jika sedang di halaman /buku/[id]/... → FAB bisa
+  // langsung pakai buku tersebut tanpa minta pilih buku lagi.
+  const contextBookId = useMemo(() => {
+    if (!pathname) return null;
+    const m = pathname.match(/^\/buku\/([^/]+)(?:\/|$)/);
+    if (!m) return null;
+    if (m[1] === "baru") return null; // /buku/baru bukan id
+    return m[1];
+  }, [pathname]);
+
+  // Sembunyikan di halaman form (sudah ada form sendiri) & halaman auth
   const hidden =
-    pathname.startsWith("/buku/") ||
+    pathname.startsWith("/buku/baru") ||
+    pathname.endsWith("/edit") ||
     pathname.startsWith("/pengaturan") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
@@ -84,11 +94,12 @@ export default function QuickAddFab() {
         </button>
       </div>
 
-      {/* Form modal — bookId tidak diberikan, modal akan munculkan dropdown buku */}
+      {/* Form modal — kalau context book ada (di halaman /buku/[id]), langsung
+          pakai. Kalau tidak, modal akan munculkan dropdown pilih buku. */}
       <TransactionFormModal
         open={modal.open}
         type={modal.type}
-        bookId={null}
+        bookId={contextBookId}
         onClose={() => setModal({ open: false, type: modal.type })}
       />
     </>

@@ -37,10 +37,25 @@ const debtDoc = (uid, id) => doc(db, "users", uid, "debts", id);
 
 function snapToBook(s) {
   const data = s.data() || {};
+  // Backward compat: kalau ada openingBalances (new), pakai itu.
+  // Kalau cuma ada openingBalance (legacy), convert ke {cash: x}.
+  let openingBalances = data.openingBalances;
+  const legacyOpening = Number(data.openingBalance) || 0;
+  if (!openingBalances && legacyOpening > 0) {
+    openingBalances = { cash: legacyOpening };
+  }
+  if (!openingBalances) openingBalances = {};
+  // Total saldo awal (jumlah semua sumber)
+  const openingTotal = Object.values(openingBalances).reduce(
+    (s, v) => s + (Number(v) || 0),
+    0
+  );
+
   return {
     id: s.id,
     name: data.name || "",
-    openingBalance: Number(data.openingBalance) || 0,
+    openingBalance: openingTotal, // backward compat: total
+    openingBalances, // per-source: {cash, bank, ewallet, qris, lain}
     template: data.template || "custom",
     createdAt:
       data.createdAt instanceof Timestamp
@@ -117,17 +132,31 @@ export async function getBook(uid, id) {
   return s.exists() ? snapToBook(s) : null;
 }
 
-export async function createBook(uid, { name, openingBalance = 0, template = "custom" }) {
+export async function createBook(
+  uid,
+  { name, openingBalance = 0, openingBalances, template = "custom" }
+) {
+  // openingBalances (object) lebih diutamakan. Kalau hanya openingBalance (number) → cash
+  const balances = openingBalances || (openingBalance > 0 ? { cash: Number(openingBalance) } : {});
+  const cleanedBalances = {};
+  for (const [k, v] of Object.entries(balances)) {
+    const n = Number(v) || 0;
+    if (n > 0) cleanedBalances[k] = n;
+  }
+  const total = Object.values(cleanedBalances).reduce((s, v) => s + v, 0);
+
   const ref = await addDoc(booksCol(uid), {
     name: (name || "").trim(),
-    openingBalance: Number(openingBalance) || 0,
+    openingBalance: total, // total (untuk backward compat reads)
+    openingBalances: cleanedBalances, // per-source
     template,
     createdAt: serverTimestamp(),
   });
   return {
     id: ref.id,
     name,
-    openingBalance,
+    openingBalance: total,
+    openingBalances: cleanedBalances,
     template,
     createdAt: new Date().toISOString(),
   };
@@ -453,16 +482,53 @@ export function summarize(book, transactions) {
   };
 }
 
+/**
+ * Return ARRAY of synthetic "saldo awal" rows — satu per sumber dana.
+ * Kalau buku punya openingBalances {cash: 1jt, bank: 5jt}, akan return
+ * 2 row dengan source masing-masing.
+ */
+export function openingRows(book) {
+  if (!book) return [];
+  const balances = book.openingBalances || {};
+  const dateStr = (book.createdAt || new Date().toISOString()).slice(0, 10);
+  const rows = [];
+  for (const [source, amount] of Object.entries(balances)) {
+    const n = Number(amount) || 0;
+    if (n <= 0) continue;
+    rows.push({
+      id: `__opening_${book.id}_${source}`,
+      bookId: book.id,
+      type: "in",
+      date: dateStr,
+      description:
+        source === "cash" ? "Saldo Awal" : `Saldo Awal (${source})`,
+      amount: n,
+      source,
+      quantity: 0,
+      unitPrice: 0,
+      createdAt: book.createdAt,
+      isOpening: true,
+    });
+  }
+  return rows;
+}
+
+// Backward-compat: tetap export single openingRow (return null kalau tidak ada)
 export function openingRow(book) {
-  const opening = book?.openingBalance || 0;
-  if (opening <= 0) return null;
+  const rows = openingRows(book);
+  if (rows.length === 0) return null;
+  // Kalau cuma 1 sumber (e.g. legacy cash-only), return langsung
+  if (rows.length === 1) return rows[0];
+  // Kalau multi, gabung jadi 1 summary row
+  const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
   return {
     id: `__opening_${book.id}`,
     bookId: book.id,
     type: "in",
-    date: (book.createdAt || new Date().toISOString()).slice(0, 10),
+    date: rows[0].date,
     description: "Saldo Awal",
-    amount: opening,
+    amount: totalAmount,
+    source: "cash", // arbitrary; jangan dipakai untuk per-source breakdown
     quantity: 0,
     unitPrice: 0,
     createdAt: book.createdAt,
@@ -474,8 +540,9 @@ export function withRunningBalance(book, transactions) {
   if (!book) return [];
   const rows = [];
   let running = 0;
-  const op = openingRow(book);
-  if (op) {
+  // Saldo awal per sumber → tampilkan masing-masing sebagai row terpisah
+  const ops = openingRows(book);
+  for (const op of ops) {
     running += op.amount;
     rows.push({ ...op, running });
   }
@@ -526,9 +593,18 @@ export async function importAll(uid, payload, { replace = false } = {}) {
   const bookIdMap = {};
   // Tulis books
   for (const b of payload.books) {
+    // Backward compat saat import: terima openingBalances atau openingBalance lama
+    const importedBalances =
+      b.openingBalances ||
+      (Number(b.openingBalance) > 0 ? { cash: Number(b.openingBalance) } : {});
+    const importedTotal = Object.values(importedBalances).reduce(
+      (s, v) => s + (Number(v) || 0),
+      0
+    );
     const ref = await addDoc(booksCol(uid), {
       name: b.name || "",
-      openingBalance: Number(b.openingBalance) || 0,
+      openingBalance: importedTotal,
+      openingBalances: importedBalances,
       template: b.template || "custom",
       createdAt: b.createdAt ? Timestamp.fromDate(new Date(b.createdAt)) : serverTimestamp(),
     });

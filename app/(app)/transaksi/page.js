@@ -5,7 +5,7 @@ import Link from "next/link";
 import Topbar from "../../components/Topbar";
 import { useAuth } from "../../components/AuthProvider";
 import {
-  openingRow,
+  openingRows,
   subscribeAllTransactions,
   subscribeBooks,
 } from "../../lib/storage";
@@ -52,9 +52,9 @@ export default function SemuaTransaksiPage() {
     return m;
   }, [books]);
 
-  // Sertakan saldo awal sebagai entri sintetis "Kas Masuk"
+  // Sertakan saldo awal per sumber sebagai entri sintetis "Kas Masuk"
   const allEntries = useMemo(() => {
-    const synth = books.map((b) => openingRow(b)).filter(Boolean);
+    const synth = books.flatMap((b) => openingRows(b));
     return [...synth, ...txs];
   }, [books, txs]);
 
