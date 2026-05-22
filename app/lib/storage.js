@@ -78,6 +78,9 @@ function snapToTx(s) {
     quantity: Number(data.quantity) || 0,
     unitPrice: Number(data.unitPrice) || 0,
     amount: Number(data.amount) || 0,
+    // Kalau transaksi ini hasil pelunasan debt, ID-nya disimpan disini.
+    // Dipakai untuk revert status debt saat tx di-delete, dan lock edit field.
+    paidDebtId: data.paidDebtId || "",
     createdAt:
       data.createdAt instanceof Timestamp
         ? data.createdAt.toDate().toISOString()
@@ -167,10 +170,14 @@ export async function updateBook(uid, id, patch) {
 }
 
 export async function deleteBook(uid, id) {
-  // hapus buku + semua transaksinya dalam batch
-  const txSnap = await getDocs(query(txCol(uid), where("bookId", "==", id)));
+  // hapus buku + semua transaksinya + semua hutang piutangnya
+  const [txSnap, debtSnap] = await Promise.all([
+    getDocs(query(txCol(uid), where("bookId", "==", id))),
+    getDocs(query(debtCol(uid), where("bookId", "==", id))),
+  ]);
   const batch = writeBatch(db);
   txSnap.forEach((d) => batch.delete(d.ref));
+  debtSnap.forEach((d) => batch.delete(d.ref));
   batch.delete(bookDoc(uid, id));
   await batch.commit();
 }
@@ -285,7 +292,25 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(uid, id) {
-  await deleteDoc(txDoc(uid, id));
+  // Cek apakah transaksi ini adalah pelunasan debt. Kalau ya, revert status
+  // debt jadi belum_lunas supaya data tetap konsisten.
+  const txRef = txDoc(uid, id);
+  const snap = await getDoc(txRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    if (data.paidDebtId) {
+      const batch = writeBatch(db);
+      batch.set(
+        debtDoc(uid, data.paidDebtId),
+        { status: "belum_lunas", paidAt: "", paidTransactionId: "" },
+        { merge: true }
+      );
+      batch.delete(txRef);
+      await batch.commit();
+      return;
+    }
+  }
+  await deleteDoc(txRef);
 }
 
 /* Realtime: semua transaksi user */
@@ -401,27 +426,30 @@ export async function markDebtPaid(uid, debtId, { paidDate, source } = {}) {
   const data = d.data();
   if (data.status === "lunas") throw new Error("Sudah lunas");
 
-  const txType = data.type === "piutang" ? "in" : "out";
-  const txDesc =
-    data.type === "piutang"
-      ? `Pelunasan piutang dari ${data.counterpart}`
-      : `Pelunasan hutang ke ${data.counterpart}`;
-  const txCategoryLabel =
-    data.type === "piutang" ? "Pelunasan Piutang" : "Pelunasan Hutang";
+  const isPiutang = data.type === "piutang";
+  const txType = isPiutang ? "in" : "out";
+  const txDesc = isPiutang
+    ? `Pelunasan piutang dari ${data.counterpart}`
+    : `Pelunasan hutang ke ${data.counterpart}`;
+  const txCategory = isPiutang ? "pelunasan-piutang" : "pelunasan-hutang";
+  const txCategoryLabel = isPiutang ? "Pelunasan Piutang" : "Pelunasan Hutang";
   const effectiveDate = paidDate || new Date().toISOString().slice(0, 10);
 
-  // Create transaksi
+  // Create transaksi pelunasan. Field `paidDebtId` dipakai untuk:
+  // - Revert status debt kalau transaksi dihapus
+  // - Lock edit field amount/source di TransactionFormModal
   const txRef = await addDoc(txCol(uid), {
     bookId: data.bookId,
     type: txType,
     date: effectiveDate,
     description: txDesc,
-    category: "",
+    category: txCategory,
     categoryLabel: txCategoryLabel,
     source: source || "cash",
     quantity: 1,
     unitPrice: Number(data.amount) || 0,
     amount: Number(data.amount) || 0,
+    paidDebtId: debtId,
     createdAt: serverTimestamp(),
   });
 
@@ -626,6 +654,7 @@ export async function importAll(uid, payload, { replace = false } = {}) {
       category: t.category || "",
       categoryLabel: t.categoryLabel || "",
       source: t.source || "cash",
+      paidDebtId: t.paidDebtId || "",
       quantity: Number(t.quantity) || 0,
       unitPrice: Number(t.unitPrice) || 0,
       amount: Number(t.amount) || 0,

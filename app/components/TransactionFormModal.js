@@ -30,6 +30,9 @@ export default function TransactionFormModal({
   const actualType = initial?.type || preset?.type || type;
   const needsBookPicker = !bookId && !isEdit; // dipanggil dari FAB
   const simpleMode = !isEdit && (preset?.simpleMode || false);
+  // Transaksi pelunasan dari debt — amount, source, kategori dikunci agar
+  // tetap sinkron dengan debt asli. User cuma boleh edit tanggal & keterangan.
+  const isPaidDebtTx = isEdit && !!initial?.paidDebtId;
 
   const [date, setDate] = useState(todayISO());
   const [description, setDescription] = useState("");
@@ -248,6 +251,19 @@ export default function TransactionFormModal({
             </div>
           ) : null}
 
+          {isPaidDebtTx ? (
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-300">
+              <div className="font-medium mb-0.5">
+                🔒 Transaksi pelunasan hutang/piutang
+              </div>
+              <p>
+                Jumlah, sumber dana, dan kategori dikunci agar tetap sinkron
+                dengan data hutang/piutang. Untuk ubah jumlah, hapus transaksi
+                ini lalu tandai ulang dari halaman Hutang/Piutang.
+              </p>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -268,7 +284,8 @@ export default function TransactionFormModal({
               <select
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className={`w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                disabled={isPaidDebtTx}
+                className={`w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed ${accent.ring}`}
               >
                 {PAYMENT_SOURCES.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -312,7 +329,8 @@ export default function TransactionFormModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+              disabled={isPaidDebtTx}
+              className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed ${accent.ring}`}
             >
               <option value="">— Pilih kategori (opsional) —</option>
               <optgroup label="Default">
@@ -354,7 +372,8 @@ export default function TransactionFormModal({
                     setError("");
                   }}
                   placeholder="0"
-                  className={`w-full pl-10 pr-3 py-3 text-lg rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 font-semibold ${accent.ring}`}
+                  disabled={isPaidDebtTx}
+                  className={`w-full pl-10 pr-3 py-3 text-lg rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 font-semibold disabled:opacity-60 disabled:cursor-not-allowed ${accent.ring}`}
                   autoFocus={!!preset?.description}
                 />
               </div>
@@ -379,7 +398,8 @@ export default function TransactionFormModal({
                     setError("");
                   }}
                   placeholder="1"
-                  className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                  disabled={isPaidDebtTx}
+                  className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed ${accent.ring}`}
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   Mis. 40 (keping), 2 (kg)
@@ -403,7 +423,8 @@ export default function TransactionFormModal({
                       setError("");
                     }}
                     placeholder="0"
-                    className={`w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                    disabled={isPaidDebtTx}
+                    className={`w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed ${accent.ring}`}
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Harga per unit</p>
