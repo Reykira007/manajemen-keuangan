@@ -32,6 +32,33 @@ Aplikasi web untuk mencatat keuangan pribadi / proyek (mis. Pembangunan Rumah, U
 - 💾 Backup: Export ke file JSON, Import dari file (mode Replace / Merge)
 - 📱 Responsive — sidebar di desktop, bottom-nav di mobile
 
+## 🗺️ Roadmap
+
+Rencana fitur ke depan (urut prioritas). Vote / usulkan via [Issues](https://github.com/Reykira007/manajemen-keuangan/issues) atau [Discussions](https://github.com/Reykira007/manajemen-keuangan/discussions).
+
+### Direncanakan v1.1
+
+- 📸 **Upload foto nota/struk** — lampirkan bukti tiap transaksi (Firebase Storage)
+- 🏷️ **Kategori custom** — user bisa tambah/edit/hapus kategori sendiri
+- 💰 **Budget per kategori** — set target pengeluaran + peringatan saat hampir lewat
+- 🔐 **Login dengan Google** — alternatif login lebih cepat & aman
+
+### Direncanakan v1.2
+
+- ⚙️ **Halaman Pengaturan Akun** — ganti password, hapus akun, info session
+- 📝 **Catatan panjang** — field deskripsi multi-baris di setiap transaksi
+- 🖨️ **Export laporan ke PDF** — siap print / share ke pasangan / partner
+- ⚡ **Quick Add** — tombol floating (+) untuk input super cepat dari mana saja
+
+### Pertimbangan (kalau dibutuhkan)
+
+- 👥 **Buku bersama** — share buku ke partner via email
+- 🔄 **Recurring transactions** — auto-create cicilan / gaji rutin
+- 📊 **Comparison periode** — bulan ini vs bulan lalu
+- 💸 **Hutang piutang tracker** — daftar piutang dengan jatuh tempo
+
+Lihat [CHANGELOG.md](CHANGELOG.md) untuk daftar perubahan yang sudah dirilis.
+
 ---
 
 ## A. Setup Firebase (sekali saja, ~5 menit)
