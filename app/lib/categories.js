@@ -4,6 +4,7 @@
 export const CATEGORIES_IN = [
   // UMKM / Dagang
   { id: "penjualan", label: "Penjualan / Omzet" },
+  { id: "pelunasan-piutang", label: "Pelunasan Piutang" },
   { id: "modal-awal", label: "Modal Awal" },
   { id: "modal-tambahan", label: "Modal Tambahan" },
   { id: "pinjaman-usaha", label: "Pinjaman Usaha" },
@@ -16,6 +17,8 @@ export const CATEGORIES_IN = [
 ];
 
 export const CATEGORIES_OUT = [
+  // Hutang/Piutang
+  { id: "pelunasan-hutang", label: "Pelunasan Hutang" },
   // UMKM / Dagang (paling sering dipakai pedagang)
   { id: "bahan-baku", label: "Bahan Baku / Stok" },
   { id: "kemasan", label: "Kemasan / Packaging" },
@@ -65,7 +68,12 @@ export function displayCategoryLabel(transaction) {
 
 // Kategori-kategori yang termasuk "penjualan" untuk perhitungan Laba Rugi.
 // Modal awal/tambahan & pinjaman TIDAK termasuk penjualan (bukan omzet).
-export const SALES_CATEGORIES = new Set(["penjualan", "pendapatan"]);
+// Pelunasan piutang DIINCLUDE karena itu = uang dari penjualan yang ditunda.
+export const SALES_CATEGORIES = new Set([
+  "penjualan",
+  "pendapatan",
+  "pelunasan-piutang",
+]);
 
 export function isSalesCategory(categoryId) {
   return SALES_CATEGORIES.has(categoryId);
