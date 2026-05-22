@@ -23,6 +23,7 @@ import { db } from "./firebase";
    users/{uid}/books/{bookId}         -> Book document
    users/{uid}/transactions/{txId}    -> Transaction document
    users/{uid}/categories/{catId}     -> Custom category (user-defined)
+   users/{uid}/debts/{debtId}         -> Hutang & Piutang
    ========================================================= */
 
 const booksCol = (uid) => collection(db, "users", uid, "books");
@@ -31,6 +32,8 @@ const txCol = (uid) => collection(db, "users", uid, "transactions");
 const txDoc = (uid, id) => doc(db, "users", uid, "transactions", id);
 const catCol = (uid) => collection(db, "users", uid, "categories");
 const catDoc = (uid, id) => doc(db, "users", uid, "categories", id);
+const debtCol = (uid) => collection(db, "users", uid, "debts");
+const debtDoc = (uid, id) => doc(db, "users", uid, "debts", id);
 
 function snapToBook(s) {
   const data = s.data() || {};
@@ -74,6 +77,27 @@ function snapToCategory(s) {
     type: data.type || "out",
     label: data.label || "",
     custom: true,
+  };
+}
+
+function snapToDebt(s) {
+  const data = s.data() || {};
+  return {
+    id: s.id,
+    bookId: data.bookId,
+    type: data.type, // 'piutang' (orang lain hutang ke kita) | 'hutang' (kita hutang ke orang)
+    counterpart: data.counterpart || "",
+    amount: Number(data.amount) || 0,
+    date: data.date || "",
+    dueDate: data.dueDate || "",
+    note: data.note || "",
+    status: data.status || "belum_lunas", // 'belum_lunas' | 'lunas'
+    paidAt: data.paidAt || "",
+    paidTransactionId: data.paidTransactionId || "",
+    createdAt:
+      data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate().toISOString()
+        : data.createdAt || new Date().toISOString(),
   };
 }
 
@@ -295,6 +319,117 @@ export function subscribeCustomCategories(uid, handler) {
   if (!uid) return () => {};
   return onSnapshot(catCol(uid), (snap) => {
     handler(snap.docs.map(snapToCategory));
+  });
+}
+
+/* ===========================
+   HUTANG & PIUTANG
+   ===========================
+   type 'piutang' = orang lain hutang ke kita (uang akan masuk saat lunas)
+   type 'hutang'  = kita hutang ke orang lain (uang akan keluar saat lunas)
+*/
+
+export async function addDebt(
+  uid,
+  { bookId, type, counterpart, amount, date, dueDate, note }
+) {
+  if (!["piutang", "hutang"].includes(type))
+    throw new Error("Tipe harus 'piutang' atau 'hutang'");
+  if (!counterpart?.trim()) throw new Error("Nama pihak wajib diisi");
+  if (!amount || amount <= 0) throw new Error("Jumlah harus lebih dari 0");
+
+  const ref = await addDoc(debtCol(uid), {
+    bookId,
+    type,
+    counterpart: counterpart.trim(),
+    amount: Number(amount),
+    date: date || new Date().toISOString().slice(0, 10),
+    dueDate: dueDate || "",
+    note: (note || "").trim(),
+    status: "belum_lunas",
+    paidAt: "",
+    paidTransactionId: "",
+    createdAt: serverTimestamp(),
+  });
+  return { id: ref.id };
+}
+
+export async function updateDebt(uid, id, patch) {
+  await setDoc(debtDoc(uid, id), patch, { merge: true });
+}
+
+export async function deleteDebt(uid, id) {
+  await deleteDoc(debtDoc(uid, id));
+}
+
+/**
+ * Tandai hutang/piutang sebagai lunas.
+ * Otomatis create transaksi kas masuk (piutang) atau kas keluar (hutang).
+ */
+export async function markDebtPaid(uid, debtId, { paidDate, source } = {}) {
+  const d = await getDoc(debtDoc(uid, debtId));
+  if (!d.exists()) throw new Error("Hutang/piutang tidak ditemukan");
+  const data = d.data();
+  if (data.status === "lunas") throw new Error("Sudah lunas");
+
+  const txType = data.type === "piutang" ? "in" : "out";
+  const txDesc =
+    data.type === "piutang"
+      ? `Pelunasan piutang dari ${data.counterpart}`
+      : `Pelunasan hutang ke ${data.counterpart}`;
+  const txCategoryLabel =
+    data.type === "piutang" ? "Pelunasan Piutang" : "Pelunasan Hutang";
+  const effectiveDate = paidDate || new Date().toISOString().slice(0, 10);
+
+  // Create transaksi
+  const txRef = await addDoc(txCol(uid), {
+    bookId: data.bookId,
+    type: txType,
+    date: effectiveDate,
+    description: txDesc,
+    category: "",
+    categoryLabel: txCategoryLabel,
+    source: source || "cash",
+    quantity: 1,
+    unitPrice: Number(data.amount) || 0,
+    amount: Number(data.amount) || 0,
+    createdAt: serverTimestamp(),
+  });
+
+  // Update status debt
+  await setDoc(
+    debtDoc(uid, debtId),
+    {
+      status: "lunas",
+      paidAt: effectiveDate,
+      paidTransactionId: txRef.id,
+    },
+    { merge: true }
+  );
+
+  return { transactionId: txRef.id };
+}
+
+export function subscribeBookDebts(uid, bookId, handler) {
+  if (!uid || !bookId) return () => {};
+  const q = query(debtCol(uid), where("bookId", "==", bookId));
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map(snapToDebt);
+    list.sort((a, b) => {
+      // belum lunas dulu, lalu sort by due date / date
+      if (a.status !== b.status) return a.status === "belum_lunas" ? -1 : 1;
+      const aDue = a.dueDate || a.date;
+      const bDue = b.dueDate || b.date;
+      return aDue.localeCompare(bDue);
+    });
+    handler(list);
+  });
+}
+
+export function subscribeAllDebts(uid, handler) {
+  if (!uid) return () => {};
+  return onSnapshot(debtCol(uid), (snap) => {
+    handler(snap.docs.map(snapToDebt));
   });
 }
 
