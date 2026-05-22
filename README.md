@@ -1,5 +1,7 @@
 # Manajemen Keuangan
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Open_App-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://my-manajemen-keuangan.vercel.app/)
+
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38bdf8?logo=tailwindcss&logoColor=white)
@@ -8,6 +10,8 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Aplikasi web untuk mencatat keuangan pribadi / proyek (mis. Pembangunan Rumah, Usaha Perikanan). **Login email/password**, data tersimpan **aman di Firebase Cloud**, **sinkron antar device** (HP & laptop), dan ada fitur **Export/Import** sebagai backup tambahan.
+
+> 🌐 **Coba langsung:** [my-manajemen-keuangan.vercel.app](https://my-manajemen-keuangan.vercel.app/) — daftar akun baru untuk mencoba semua fitur.
 
 ## Tech Stack
 
