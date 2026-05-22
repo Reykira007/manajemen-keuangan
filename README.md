@@ -13,6 +13,55 @@ Aplikasi web untuk mencatat keuangan pribadi / proyek (mis. Pembangunan Rumah, U
 
 > 🌐 **Coba langsung:** [my-manajemen-keuangan.vercel.app](https://my-manajemen-keuangan.vercel.app/) — daftar akun baru untuk mencoba semua fitur.
 
+## 📸 Tampilan Aplikasi
+
+> _Screenshot di bawah adalah placeholder. Setelah aplikasi dipakai, ganti dengan screenshot asli dengan menempatkan file di folder `docs/screenshots/`._
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <b>Dashboard</b><br>
+      <sub>Daftar semua buku dengan ringkasan saldo</sub><br><br>
+      <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%">
+    </td>
+    <td align="center" width="33%">
+      <b>Detail Buku</b><br>
+      <sub>Ringkasan + tabel transaksi dengan saldo berjalan</sub><br><br>
+      <img src="docs/screenshots/detail-buku.png" alt="Detail Buku" width="100%">
+    </td>
+    <td align="center" width="33%">
+      <b>Laporan</b><br>
+      <sub>Pie chart per kategori + bar chart per bulan</sub><br><br>
+      <img src="docs/screenshots/laporan.png" alt="Laporan" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <b>Form Transaksi</b><br>
+      <sub>Qty × Harga Satuan auto-hitung</sub><br><br>
+      <img src="docs/screenshots/form-transaksi.png" alt="Form Transaksi" width="100%">
+    </td>
+    <td align="center">
+      <b>Dark Mode</b><br>
+      <sub>Tema gelap mengikuti preference sistem</sub><br><br>
+      <img src="docs/screenshots/dark-mode.png" alt="Dark Mode" width="100%">
+    </td>
+    <td align="center">
+      <b>Mobile (PWA)</b><br>
+      <sub>Installable di HP seperti aplikasi native</sub><br><br>
+      <img src="docs/screenshots/mobile-pwa.png" alt="Mobile PWA" width="100%">
+    </td>
+  </tr>
+</table>
+
+### Cara menambahkan screenshot asli
+
+1. Buat folder `docs/screenshots/`
+2. Capture aplikasi (mis. lewat browser DevTools → Toggle device toolbar untuk mobile view)
+3. Simpan dengan nama yang sesuai: `dashboard.png`, `detail-buku.png`, `laporan.png`, `form-transaksi.png`, `dark-mode.png`, `mobile-pwa.png`
+4. Commit ke repo
+5. Screenshot otomatis muncul di tabel di atas
+
 ## Tech Stack
 
 - **Next.js 14** (App Router)
