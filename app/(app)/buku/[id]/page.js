@@ -10,6 +10,7 @@ import {
   deleteBook,
   deleteTransaction,
   subscribeBook,
+  subscribeBookDebts,
   subscribeBookTransactions,
   summarize,
   withRunningBalance,
@@ -25,6 +26,7 @@ export default function BukuDetailPage() {
 
   const [book, setBook] = useState(null);
   const [txs, setTxs] = useState([]);
+  const [debts, setDebts] = useState([]);
   const [ready, setReady] = useState(false);
   const [bookLoaded, setBookLoaded] = useState(false);
 
@@ -54,11 +56,24 @@ export default function BukuDetailPage() {
       gotTxs = true;
       markReady();
     });
+    const unsubD = subscribeBookDebts(user.uid, id, setDebts);
     return () => {
       unsubB();
       unsubT();
+      unsubD();
     };
   }, [user, id]);
+
+  const debtsSummary = useMemo(() => {
+    const piutangBelum = debts
+      .filter((d) => d.type === "piutang" && d.status === "belum_lunas")
+      .reduce((s, d) => s + d.amount, 0);
+    const hutangBelum = debts
+      .filter((d) => d.type === "hutang" && d.status === "belum_lunas")
+      .reduce((s, d) => s + d.amount, 0);
+    const countBelum = debts.filter((d) => d.status === "belum_lunas").length;
+    return { piutangBelum, hutangBelum, countBelum };
+  }, [debts]);
 
   const summary = summarize(book, txs);
   const rows = useMemo(() => withRunningBalance(book, txs), [book, txs]);
@@ -119,16 +134,24 @@ export default function BukuDetailPage() {
         }
         actions={
           book ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
+              <Link
+                href={`/buku/${id}/hutang-piutang`}
+                className="text-xs md:text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white font-medium px-2 md:px-3 py-2"
+                title="Hutang & Piutang"
+              >
+                <span className="hidden sm:inline">Hutang/Piutang</span>
+                <span className="sm:hidden">H/P</span>
+              </Link>
               <Link
                 href={`/buku/${id}/edit`}
-                className="text-xs md:text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white font-medium px-3 py-2"
+                className="text-xs md:text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white font-medium px-2 md:px-3 py-2"
               >
-                Edit Buku
+                Edit
               </Link>
               <button
                 onClick={onDeleteBook}
-                className="text-xs md:text-sm text-expense-600 hover:text-expense-700 font-medium px-3 py-2"
+                className="text-xs md:text-sm text-expense-600 hover:text-expense-700 font-medium px-2 md:px-3 py-2"
                 title="Hapus buku"
               >
                 Hapus
@@ -144,6 +167,47 @@ export default function BukuDetailPage() {
           <SummaryBox label="Total Kas Keluar" value={summary.totalOut} tone="expense" />
           <SummaryBox label="Sisa Saldo" value={summary.balance} tone="neutral" />
         </section>
+
+        {/* Hutang Piutang Summary - tampil hanya kalau ada record */}
+        {debtsSummary.countBelum > 0 ? (
+          <Link
+            href={`/buku/${id}/hutang-piutang`}
+            className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-income-500 transition-colors"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+                  Hutang & Piutang Belum Lunas
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {debtsSummary.piutangBelum > 0 ? (
+                    <div className="text-sm">
+                      <span className="text-income-700 font-semibold">
+                        📥 {formatRupiah(debtsSummary.piutangBelum)}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-1">
+                        (piutang)
+                      </span>
+                    </div>
+                  ) : null}
+                  {debtsSummary.hutangBelum > 0 ? (
+                    <div className="text-sm">
+                      <span className="text-expense-700 font-semibold">
+                        📤 {formatRupiah(debtsSummary.hutangBelum)}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-1">
+                        (hutang)
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <span className="text-xs text-income-700 font-medium shrink-0">
+                Lihat →
+              </span>
+            </div>
+          </Link>
+        ) : null}
 
         <QuickActionsBar
           book={book}
