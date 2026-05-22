@@ -87,7 +87,7 @@ export default function BukuBaruPage() {
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100"
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-1.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 Jumlah uang yang sudah ada saat buku dibuat. Ikut dihitung
                 sebagai Kas Masuk.
               </p>
@@ -103,7 +103,7 @@ export default function BukuBaruPage() {
               </button>
               <Link
                 href="/"
-                className="px-4 py-2.5 text-slate-600 hover:text-slate-900 text-sm font-medium"
+                className="px-4 py-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium"
               >
                 Batal
               </Link>
