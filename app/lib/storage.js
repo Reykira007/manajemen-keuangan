@@ -35,6 +35,7 @@ function snapToBook(s) {
     id: s.id,
     name: data.name || "",
     openingBalance: Number(data.openingBalance) || 0,
+    template: data.template || "custom",
     createdAt:
       data.createdAt instanceof Timestamp
         ? data.createdAt.toDate().toISOString()
@@ -77,13 +78,20 @@ export async function getBook(uid, id) {
   return s.exists() ? snapToBook(s) : null;
 }
 
-export async function createBook(uid, { name, openingBalance = 0 }) {
+export async function createBook(uid, { name, openingBalance = 0, template = "custom" }) {
   const ref = await addDoc(booksCol(uid), {
     name: (name || "").trim(),
     openingBalance: Number(openingBalance) || 0,
+    template,
     createdAt: serverTimestamp(),
   });
-  return { id: ref.id, name, openingBalance, createdAt: new Date().toISOString() };
+  return {
+    id: ref.id,
+    name,
+    openingBalance,
+    template,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function updateBook(uid, id, patch) {
@@ -315,6 +323,7 @@ export async function importAll(uid, payload, { replace = false } = {}) {
     const ref = await addDoc(booksCol(uid), {
       name: b.name || "",
       openingBalance: Number(b.openingBalance) || 0,
+      template: b.template || "custom",
       createdAt: b.createdAt ? Timestamp.fromDate(new Date(b.createdAt)) : serverTimestamp(),
     });
     bookIdMap[b.id] = ref.id;
