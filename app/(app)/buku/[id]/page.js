@@ -16,6 +16,7 @@ import {
 } from "../../../lib/storage";
 import { displayCategoryLabel, getCategoryLabel } from "../../../lib/categories";
 import { getQuickActions, getTemplate } from "../../../lib/templates";
+import { getSourceIcon, getSourceLabel } from "../../../lib/sources";
 import { formatDate, formatRupiah } from "../../../lib/format";
 
 export default function BukuDetailPage() {
@@ -220,7 +221,18 @@ export default function BukuDetailPage() {
                           ) : null}
                         </td>
                         <td className="px-5 py-3 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                          {r.isOpening ? "—" : (displayCategoryLabel(r) || "—")}
+                          {r.isOpening ? (
+                            "—"
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <span>{displayCategoryLabel(r) || "—"}</span>
+                              {r.source ? (
+                                <span className="text-[10px]" title={getSourceLabel(r.source)}>
+                                  {getSourceIcon(r.source)} {getSourceLabel(r.source)}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-right text-income-700 font-medium whitespace-nowrap">
                           {r.type === "in" ? formatRupiah(r.amount) : "-"}
@@ -274,6 +286,9 @@ export default function BukuDetailPage() {
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {formatDate(r.date)}
+                          {!r.isOpening && r.source
+                            ? ` · ${getSourceIcon(r.source)}`
+                            : ""}
                           {!r.isOpening && displayCategoryLabel(r)
                             ? ` · ${displayCategoryLabel(r)}`
                             : ""}

@@ -9,6 +9,7 @@ import {
   updateTransaction,
 } from "../lib/storage";
 import { getCategoriesFor } from "../lib/categories";
+import { DEFAULT_SOURCE, PAYMENT_SOURCES } from "../lib/sources";
 import { useAuth } from "./AuthProvider";
 import { formatRupiah, todayISO } from "../lib/format";
 
@@ -33,6 +34,7 @@ export default function TransactionFormModal({
   const [date, setDate] = useState(todayISO());
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [source, setSource] = useState(DEFAULT_SOURCE);
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
   const [selectedBookId, setSelectedBookId] = useState("");
@@ -65,12 +67,14 @@ export default function TransactionFormModal({
         setDate(initial.date || todayISO());
         setDescription(initial.description || "");
         setCategory(initial.category || "");
+        setSource(initial.source || DEFAULT_SOURCE);
         setQuantity(String(initial.quantity || 1));
         setUnitPrice(formatGroup(String(initial.unitPrice || "")));
       } else {
         setDate(todayISO());
         setDescription(preset?.description || "");
         setCategory(preset?.category || "");
+        setSource(preset?.source || DEFAULT_SOURCE);
         // Di simple mode, qty selalu = 1
         setQuantity("1");
         setUnitPrice("");
@@ -151,6 +155,7 @@ export default function TransactionFormModal({
           description,
           category,
           categoryLabel: selectedCategoryLabel,
+          source,
           quantity: finalQty,
           unitPrice: unitNum,
         });
@@ -162,6 +167,7 @@ export default function TransactionFormModal({
           description,
           category,
           categoryLabel: selectedCategoryLabel,
+          source,
           quantity: finalQty,
           unitPrice: unitNum,
         });
@@ -242,17 +248,35 @@ export default function TransactionFormModal({
             </div>
           ) : null}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Tanggal
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Tanggal
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={`w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Sumber Dana
+              </label>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className={`w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+              >
+                {PAYMENT_SOURCES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.icon} {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

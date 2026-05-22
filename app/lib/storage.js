@@ -56,6 +56,7 @@ function snapToTx(s) {
     description: data.description || "",
     category: data.category || "",
     categoryLabel: data.categoryLabel || "",
+    source: data.source || "cash", // sumber dana: cash, bank, ewallet, qris, lain
     quantity: Number(data.quantity) || 0,
     unitPrice: Number(data.unitPrice) || 0,
     amount: Number(data.amount) || 0,
@@ -163,7 +164,17 @@ export async function getBookTransactions(uid, bookId) {
 
 export async function addTransaction(
   uid,
-  { bookId, type, date, description, category, categoryLabel, quantity, unitPrice }
+  {
+    bookId,
+    type,
+    date,
+    description,
+    category,
+    categoryLabel,
+    source,
+    quantity,
+    unitPrice,
+  }
 ) {
   const qty = Math.max(0, Number(quantity) || 0);
   const unit = Math.max(0, Number(unitPrice) || 0);
@@ -175,6 +186,7 @@ export async function addTransaction(
     description: (description || "").trim(),
     category: category || "",
     categoryLabel: categoryLabel || "",
+    source: source || "cash",
     quantity: qty,
     unitPrice: unit,
     amount,
@@ -188,6 +200,7 @@ export async function addTransaction(
     description,
     category: category || "",
     categoryLabel: categoryLabel || "",
+    source: source || "cash",
     quantity: qty,
     unitPrice: unit,
     amount,
@@ -198,7 +211,7 @@ export async function addTransaction(
 export async function updateTransaction(
   uid,
   id,
-  { date, description, category, categoryLabel, quantity, unitPrice }
+  { date, description, category, categoryLabel, source, quantity, unitPrice }
 ) {
   const qty = Math.max(0, Number(quantity) || 0);
   const unit = Math.max(0, Number(unitPrice) || 0);
@@ -209,6 +222,7 @@ export async function updateTransaction(
       description: (description || "").trim(),
       category: category || "",
       categoryLabel: categoryLabel || "",
+      source: source || "cash",
       quantity: qty,
       unitPrice: unit,
       amount: qty * unit,
@@ -400,6 +414,7 @@ export async function importAll(uid, payload, { replace = false } = {}) {
       description: t.description || "",
       category: t.category || "",
       categoryLabel: t.categoryLabel || "",
+      source: t.source || "cash",
       quantity: Number(t.quantity) || 0,
       unitPrice: Number(t.unitPrice) || 0,
       amount: Number(t.amount) || 0,

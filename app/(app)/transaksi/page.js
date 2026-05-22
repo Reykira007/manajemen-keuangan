@@ -10,6 +10,7 @@ import {
   subscribeBooks,
 } from "../../lib/storage";
 import { displayCategoryLabel, getCategoryLabel } from "../../lib/categories";
+import { PAYMENT_SOURCES, getSourceIcon, getSourceLabel } from "../../lib/sources";
 import { formatDate, formatRupiah } from "../../lib/format";
 
 export default function SemuaTransaksiPage() {
@@ -19,6 +20,7 @@ export default function SemuaTransaksiPage() {
   const [ready, setReady] = useState(false);
   const [bookFilter, setBookFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -61,6 +63,9 @@ export default function SemuaTransaksiPage() {
     return allEntries
       .filter((t) => (bookFilter === "all" ? true : t.bookId === bookFilter))
       .filter((t) => (typeFilter === "all" ? true : t.type === typeFilter))
+      .filter((t) =>
+        sourceFilter === "all" ? true : (t.source || "cash") === sourceFilter
+      )
       .filter((t) => {
         if (!q) return true;
         const desc = (t.description || "").toLowerCase();
@@ -72,7 +77,22 @@ export default function SemuaTransaksiPage() {
         if (a.date !== b.date) return b.date.localeCompare(a.date);
         return (b.createdAt || "").localeCompare(a.createdAt || "");
       });
-  }, [allEntries, bookFilter, typeFilter, search, bookMap]);
+  }, [allEntries, bookFilter, typeFilter, sourceFilter, search, bookMap]);
+
+  // Saldo per Sumber Dana (untuk widget)
+  const byPaymentSource = useMemo(() => {
+    const map = {};
+    for (const s of PAYMENT_SOURCES) {
+      map[s.id] = { ...s, total: 0 };
+    }
+    for (const t of allEntries) {
+      const id = t.source || "cash";
+      if (!map[id]) continue;
+      if (t.type === "in") map[id].total += t.amount;
+      else map[id].total -= t.amount;
+    }
+    return Object.values(map);
+  }, [allEntries]);
 
   const totals = useMemo(() => {
     let inSum = 0;
@@ -95,8 +115,47 @@ export default function SemuaTransaksiPage() {
           <Box label="Selisih" value={totals.net} tone="neutral" />
         </section>
 
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="sm:col-span-3">
+        {/* Saldo per Sumber Dana */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Saldo per Sumber Dana
+            </h3>
+            <span className="text-xs text-slate-400">total lintas buku</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {byPaymentSource.map((s) => (
+              <button
+                key={s.id}
+                onClick={() =>
+                  setSourceFilter(sourceFilter === s.id ? "all" : s.id)
+                }
+                className={`text-left px-3 py-2 rounded-lg border transition-colors ${
+                  sourceFilter === s.id
+                    ? "border-income-500 bg-income-50 dark:bg-income-500/10"
+                    : "border-slate-200 dark:border-slate-700 hover:border-income-300"
+                }`}
+              >
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <span>{s.icon}</span>
+                  <span>{s.shortLabel}</span>
+                </div>
+                <div
+                  className={`text-sm font-semibold mt-0.5 ${
+                    s.total < 0
+                      ? "text-expense-700"
+                      : "text-slate-900 dark:text-slate-100"
+                  }`}
+                >
+                  {formatRupiah(s.total)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="sm:col-span-4">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Cari
             </label>
@@ -137,6 +196,23 @@ export default function SemuaTransaksiPage() {
               <option value="all">Semua</option>
               <option value="in">Kas Masuk</option>
               <option value="out">Kas Keluar</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Sumber Dana
+            </label>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none"
+            >
+              <option value="all">Semua</option>
+              {PAYMENT_SOURCES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.icon} {s.label}
+                </option>
+              ))}
             </select>
           </div>
         </section>
@@ -183,12 +259,17 @@ export default function SemuaTransaksiPage() {
                         <td className="px-5 py-3 text-slate-900 dark:text-slate-100">
                           <div>{t.description}</div>
                           <div className="text-[11px] text-slate-400 mt-0.5 space-x-2">
+                            {!t.isOpening && t.source ? (
+                              <span title={getSourceLabel(t.source)}>
+                                {getSourceIcon(t.source)} {getSourceLabel(t.source)}
+                              </span>
+                            ) : null}
                             {!t.isOpening && displayCategoryLabel(t) ? (
-                              <span>{displayCategoryLabel(t)}</span>
+                              <span>· {displayCategoryLabel(t)}</span>
                             ) : null}
                             {!t.isOpening && t.quantity > 1 && t.unitPrice > 0 ? (
                               <span>
-                                {t.quantity} × {formatRupiah(t.unitPrice)}
+                                · {t.quantity} × {formatRupiah(t.unitPrice)}
                               </span>
                             ) : null}
                           </div>
@@ -222,6 +303,9 @@ export default function SemuaTransaksiPage() {
                           </Link>
                           {" · "}
                           {formatDate(t.date)}
+                          {!t.isOpening && t.source
+                            ? ` · ${getSourceIcon(t.source)}`
+                            : ""}
                           {!t.isOpening && t.quantity > 1 && t.unitPrice > 0
                             ? ` · ${t.quantity} × ${formatRupiah(t.unitPrice)}`
                             : ""}
