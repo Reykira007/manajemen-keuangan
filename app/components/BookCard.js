@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { formatRupiah, formatDate } from "../lib/format";
+import { getTemplate } from "../lib/templates";
 
 export default function BookCard({ book, summary }) {
+  const template = getTemplate(book.template);
   return (
     <Link
       href={`/buku/${book.id}`}
       className="block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-income-500 hover:shadow-md transition-all p-5"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-            {book.name}
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Dibuat {formatDate(book.createdAt)}
-          </p>
+        <div className="min-w-0 flex items-start gap-3">
+          {template && template.id !== "custom" ? (
+            <span className="text-2xl shrink-0" title={template.name}>
+              {template.icon}
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+              {book.name}
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Dibuat {formatDate(book.createdAt)}
+            </p>
+          </div>
         </div>
         <span
           className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
