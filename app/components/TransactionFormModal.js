@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addTransaction, updateTransaction } from "../lib/storage";
+import {
+  addTransaction,
+  subscribeBooks,
+  updateTransaction,
+} from "../lib/storage";
 import { getCategoriesFor } from "../lib/categories";
 import { useAuth } from "./AuthProvider";
 import { formatRupiah, todayISO } from "../lib/format";
@@ -20,14 +24,28 @@ export default function TransactionFormModal({
   const { user } = useAuth();
   const isEdit = !!initial;
   const actualType = initial?.type || type;
+  const needsBookPicker = !bookId && !isEdit; // dipanggil dari FAB
 
   const [date, setDate] = useState(todayISO());
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
+  const [selectedBookId, setSelectedBookId] = useState("");
+  const [books, setBooks] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Load list of books (untuk picker saat dipanggil dari FAB)
+  useEffect(() => {
+    if (!user || !needsBookPicker || !open) return;
+    const unsub = subscribeBooks(user.uid, (list) => {
+      setBooks(list);
+      // Auto-pilih buku pertama kalau belum ada pilihan
+      setSelectedBookId((prev) => prev || list[0]?.id || "");
+    });
+    return unsub;
+  }, [user, needsBookPicker, open]);
 
   useEffect(() => {
     if (open) {
@@ -43,6 +61,7 @@ export default function TransactionFormModal({
         setCategory("");
         setQuantity("1");
         setUnitPrice("");
+        setSelectedBookId("");
       }
       setError("");
       setSaving(false);
@@ -76,6 +95,11 @@ export default function TransactionFormModal({
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    const effectiveBookId = bookId || selectedBookId;
+    if (!isEdit && !effectiveBookId) {
+      setError("Pilih buku dulu.");
+      return;
+    }
     if (!description.trim()) {
       setError("Keterangan wajib diisi.");
       return;
@@ -101,7 +125,7 @@ export default function TransactionFormModal({
         });
       } else {
         await addTransaction(user.uid, {
-          bookId,
+          bookId: effectiveBookId,
           type: actualType,
           date,
           description,
@@ -157,6 +181,35 @@ export default function TransactionFormModal({
         </div>
 
         <form onSubmit={onSubmit} className="p-5 space-y-4">
+          {needsBookPicker ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Buku
+              </label>
+              {books.length === 0 ? (
+                <p className="text-sm text-expense-600">
+                  Belum ada buku. Buat buku dulu di Dashboard.
+                </p>
+              ) : (
+                <select
+                  value={selectedBookId}
+                  onChange={(e) => {
+                    setSelectedBookId(e.target.value);
+                    setError("");
+                  }}
+                  className={`w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none text-slate-900 dark:text-slate-100 ${accent.ring}`}
+                  required
+                >
+                  {books.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : null}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               Tanggal
