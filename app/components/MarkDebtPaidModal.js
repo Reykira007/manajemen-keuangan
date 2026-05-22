@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { markDebtPaid } from "../lib/storage";
 import { DEFAULT_SOURCE, PAYMENT_SOURCES } from "../lib/sources";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastProvider";
 import { formatRupiah, todayISO } from "../lib/format";
 
 export default function MarkDebtPaidModal({ open, debt, onClose, onSaved }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [paidDate, setPaidDate] = useState(todayISO());
   const [source, setSource] = useState(DEFAULT_SOURCE);
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,11 @@ export default function MarkDebtPaidModal({ open, debt, onClose, onSaved }) {
     setSaving(true);
     try {
       await markDebtPaid(user.uid, debt.id, { paidDate, source });
+      showToast(
+        isPiutang
+          ? `Piutang ${debt.counterpart} dilunasi ✓`
+          : `Hutang ke ${debt.counterpart} dilunasi ✓`
+      );
       onSaved && onSaved();
       onClose();
     } catch (err) {

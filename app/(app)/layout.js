@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "../components/Navigation";
 import QuickAddFab from "../components/QuickAddFab";
+import { ToastProvider } from "../components/ToastProvider";
 import { useAuth } from "../components/AuthProvider";
 
 export default function AppLayout({ children }) {
@@ -24,10 +25,12 @@ export default function AppLayout({ children }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex">
-      <Navigation />
-      <main className="flex-1 min-w-0 pb-20 md:pb-0">{children}</main>
-      <QuickAddFab />
-    </div>
+    <ToastProvider>
+      <div className="min-h-screen flex">
+        <Navigation />
+        <main className="flex-1 min-w-0 pb-20 md:pb-0">{children}</main>
+        <QuickAddFab />
+      </div>
+    </ToastProvider>
   );
 }
