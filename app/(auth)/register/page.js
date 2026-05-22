@@ -15,6 +15,9 @@ const errorMessage = (code) => {
   return map[code] || "Gagal mendaftar. Coba lagi.";
 };
 
+const inputClass =
+  "w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500";
+
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,8 +49,10 @@ export default function RegisterPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-slate-900">Daftar Akun</h1>
-      <p className="text-sm text-slate-500 mt-1">
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Daftar Akun
+      </h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
         Sudah punya akun?{" "}
         <Link href="/login" className="text-income-700 font-medium">
           Masuk
@@ -56,7 +61,7 @@ export default function RegisterPage() {
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             Email
           </label>
           <input
@@ -64,14 +69,14 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="nama@email.com"
-            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900"
+            className={inputClass}
             required
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             Password
           </label>
           <div className="relative">
@@ -80,14 +85,14 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimal 6 karakter"
-              className="w-full px-4 py-2.5 pr-20 rounded-lg border border-slate-300 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900"
+              className={`${inputClass} pr-20`}
               required
               minLength={6}
             />
             <button
               type="button"
               onClick={() => setShowPwd((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-900"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             >
               {showPwd ? "Sembunyikan" : "Tampilkan"}
             </button>
@@ -95,7 +100,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             Konfirmasi Password
           </label>
           <input
@@ -103,13 +108,13 @@ export default function RegisterPage() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Ulangi password"
-            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900"
+            className={inputClass}
             required
           />
         </div>
 
         {error ? (
-          <div className="text-sm text-expense-600 bg-expense-50 border border-expense-100 rounded-lg px-3 py-2">
+          <div className="text-sm text-expense-600 bg-expense-50 dark:bg-expense-500/10 border border-expense-100 dark:border-expense-500/20 rounded-lg px-3 py-2">
             {error}
           </div>
         ) : null}
