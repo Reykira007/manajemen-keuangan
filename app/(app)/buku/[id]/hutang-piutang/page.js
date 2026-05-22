@@ -63,7 +63,14 @@ export default function HutangPiutangPage() {
   };
 
   const onDelete = async (debt) => {
-    if (!confirm(`Hapus catatan ${debt.type} dari ${debt.counterpart}?`)) return;
+    const msg =
+      debt.status === "lunas"
+        ? `Hapus catatan ${debt.type} ${debt.counterpart}?\n\n` +
+          `Catatan: transaksi pelunasan ${formatRupiah(debt.amount)} akan ` +
+          `TETAP ADA di buku (uang sudah benar-benar masuk/keluar), tapi tidak ` +
+          `lagi terhubung ke debt ini.`
+        : `Hapus catatan ${debt.type} dari ${debt.counterpart}?`;
+    if (!confirm(msg)) return;
     await deleteDebt(user.uid, debt.id);
   };
 

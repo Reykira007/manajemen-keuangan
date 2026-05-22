@@ -56,11 +56,18 @@ export default function BackupPage() {
           "Cancel = Tambahkan data file ke data yang sudah ada (mode merge)."
       );
       const result = await importAll(user.uid, payload, { replace });
+      const parts = [
+        `${result.importedBooks} buku`,
+        `${result.importedTransactions} transaksi`,
+      ];
+      if (result.importedDebts > 0)
+        parts.push(`${result.importedDebts} hutang/piutang`);
+      if (result.importedCategories > 0)
+        parts.push(`${result.importedCategories} kategori custom`);
       setMessage({
         type: "ok",
         text:
-          `Import berhasil. ${result.importedBooks} buku & ` +
-          `${result.importedTransactions} transaksi ditambahkan` +
+          `Import berhasil. ${parts.join(", ")} ditambahkan` +
           (replace ? " (data lama dihapus)." : "."),
       });
     } catch (err) {

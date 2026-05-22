@@ -413,6 +413,21 @@ export async function updateDebt(uid, id, patch) {
 }
 
 export async function deleteDebt(uid, id) {
+  // Kalau debt sudah lunas, ada transaksi pelunasan yang reference balik via
+  // paidDebtId. Clear field tersebut supaya tidak orphan, tapi tetap simpan
+  // transaksi-nya (uang memang masuk/keluar, jangan ikut dihapus).
+  const snap = await getDoc(debtDoc(uid, id));
+  if (snap.exists() && snap.data().paidTransactionId) {
+    const batch = writeBatch(db);
+    batch.set(
+      txDoc(uid, snap.data().paidTransactionId),
+      { paidDebtId: "" },
+      { merge: true }
+    );
+    batch.delete(debtDoc(uid, id));
+    await batch.commit();
+    return;
+  }
   await deleteDoc(debtDoc(uid, id));
 }
 
@@ -587,15 +602,19 @@ export function withRunningBalance(book, transactions) {
 
 export async function exportAll(uid) {
   if (!uid) throw new Error("Tidak ada user");
-  const [books, transactions] = await Promise.all([
+  const [books, transactions, debtSnap, catSnap] = await Promise.all([
     getBooks(uid),
     getTransactions(uid),
+    getDocs(debtCol(uid)),
+    getDocs(catCol(uid)),
   ]);
   return {
-    schema: "manajemen-keuangan/v1",
+    schema: "manajemen-keuangan/v2",
     exportedAt: new Date().toISOString(),
     books,
     transactions,
+    debts: debtSnap.docs.map(snapToDebt),
+    customCategories: catSnap.docs.map(snapToCategory),
   };
 }
 
@@ -605,23 +624,35 @@ export async function importAll(uid, payload, { replace = false } = {}) {
     throw new Error("Format file tidak valid.");
   }
 
+  // v2: payload juga punya debts & customCategories. Backward compat dengan v1.
+  const importDebts = Array.isArray(payload.debts) ? payload.debts : [];
+  const importCats = Array.isArray(payload.customCategories)
+    ? payload.customCategories
+    : [];
+
   if (replace) {
-    // hapus semua data dulu
+    // Hapus semua data dulu (books, txs, debts, customCategories)
     const batch = writeBatch(db);
-    const [bs, ts] = await Promise.all([
+    const [bs, ts, ds, cs] = await Promise.all([
       getDocs(booksCol(uid)),
       getDocs(txCol(uid)),
+      getDocs(debtCol(uid)),
+      getDocs(catCol(uid)),
     ]);
     bs.forEach((d) => batch.delete(d.ref));
     ts.forEach((d) => batch.delete(d.ref));
+    ds.forEach((d) => batch.delete(d.ref));
+    cs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
   }
 
-  // Mapping ID lama -> ID baru supaya bookId di transaksi tetap nyambung
+  // ID mapping: lama -> baru
   const bookIdMap = {};
-  // Tulis books
+  const debtIdMap = {};
+  const categoryIdMap = {}; // custom category ID lama -> baru
+
+  // 1. Import books
   for (const b of payload.books) {
-    // Backward compat saat import: terima openingBalances atau openingBalance lama
     const importedBalances =
       b.openingBalances ||
       (Number(b.openingBalance) > 0 ? { cash: Number(b.openingBalance) } : {});
@@ -634,32 +665,78 @@ export async function importAll(uid, payload, { replace = false } = {}) {
       openingBalance: importedTotal,
       openingBalances: importedBalances,
       template: b.template || "custom",
-      createdAt: b.createdAt ? Timestamp.fromDate(new Date(b.createdAt)) : serverTimestamp(),
+      createdAt: b.createdAt
+        ? Timestamp.fromDate(new Date(b.createdAt))
+        : serverTimestamp(),
     });
     bookIdMap[b.id] = ref.id;
   }
 
-  // Tulis transactions secara batch (max 500 per batch)
+  // 2. Import custom categories
+  for (const c of importCats) {
+    if (!c.type || !c.label) continue;
+    const ref = await addDoc(catCol(uid), {
+      type: c.type,
+      label: c.label,
+      createdAt: serverTimestamp(),
+    });
+    categoryIdMap[c.id] = ref.id;
+  }
+
+  // 3. Import debts (sebelum transactions supaya paidDebtId di tx bisa di-map)
+  for (const d of importDebts) {
+    const newBookId = bookIdMap[d.bookId];
+    if (!newBookId) continue;
+    const ref = await addDoc(debtCol(uid), {
+      bookId: newBookId,
+      type: d.type,
+      counterpart: d.counterpart || "",
+      amount: Number(d.amount) || 0,
+      date: d.date || "",
+      dueDate: d.dueDate || "",
+      note: d.note || "",
+      status: d.status || "belum_lunas",
+      paidAt: d.paidAt || "",
+      paidTransactionId: "", // akan di-update setelah tx import
+      createdAt: d.createdAt
+        ? Timestamp.fromDate(new Date(d.createdAt))
+        : serverTimestamp(),
+    });
+    debtIdMap[d.id] = ref.id;
+  }
+
+  // 4. Import transactions (batch). Map: bookId, paidDebtId, custom category
   let batch = writeBatch(db);
   let count = 0;
+  const txIdMap = {}; // tx id lama -> baru (untuk update debt.paidTransactionId)
   for (const t of payload.transactions) {
     const newBookId = bookIdMap[t.bookId];
-    if (!newBookId) continue; // skip kalau bookId tidak dikenal
+    if (!newBookId) continue;
+    // paidDebtId mapping (kalau ada di backup)
+    const newPaidDebtId = t.paidDebtId ? debtIdMap[t.paidDebtId] || "" : "";
+    // category mapping (kalau custom category)
+    let newCategory = t.category || "";
+    if (newCategory && categoryIdMap[newCategory]) {
+      newCategory = categoryIdMap[newCategory];
+    }
     const ref = doc(txCol(uid));
     batch.set(ref, {
       bookId: newBookId,
       type: t.type,
       date: t.date,
       description: t.description || "",
-      category: t.category || "",
+      category: newCategory,
       categoryLabel: t.categoryLabel || "",
       source: t.source || "cash",
-      paidDebtId: t.paidDebtId || "",
+      paidDebtId: newPaidDebtId,
       quantity: Number(t.quantity) || 0,
       unitPrice: Number(t.unitPrice) || 0,
       amount: Number(t.amount) || 0,
-      createdAt: t.createdAt ? Timestamp.fromDate(new Date(t.createdAt)) : serverTimestamp(),
+      createdAt: t.createdAt
+        ? Timestamp.fromDate(new Date(t.createdAt))
+        : serverTimestamp(),
     });
+    txIdMap[t.id] = ref.id;
     count++;
     if (count % 400 === 0) {
       await batch.commit();
@@ -668,8 +745,24 @@ export async function importAll(uid, payload, { replace = false } = {}) {
   }
   await batch.commit();
 
+  // 5. Update debts dengan paidTransactionId baru (untuk debt yang lunas)
+  for (const d of importDebts) {
+    if (d.status !== "lunas" || !d.paidTransactionId) continue;
+    const newDebtId = debtIdMap[d.id];
+    const newTxId = txIdMap[d.paidTransactionId];
+    if (newDebtId && newTxId) {
+      await setDoc(
+        debtDoc(uid, newDebtId),
+        { paidTransactionId: newTxId },
+        { merge: true }
+      );
+    }
+  }
+
   return {
     importedBooks: payload.books.length,
     importedTransactions: payload.transactions.length,
+    importedDebts: importDebts.length,
+    importedCategories: importCats.length,
   };
 }
