@@ -9,7 +9,7 @@ import {
   subscribeAllTransactions,
   subscribeBooks,
 } from "../../../lib/storage";
-import { getCategoryLabel } from "../../../lib/categories";
+import { displayCategoryLabel } from "../../../lib/categories";
 import { formatRupiah, formatDate, todayISO } from "../../../lib/format";
 
 // Kategori yang dihitung sebagai "Penjualan / Omzet" (bukan modal/pinjaman)
@@ -62,22 +62,16 @@ export default function LabaRugiPage() {
     let expenseTotal = 0;
 
     for (const t of inRange) {
+      const label = displayCategoryLabel(t) || "Lain-lain";
       if (t.type === "in") {
         if (SALES_CATEGORIES.has(t.category)) {
-          const label = getCategoryLabel("in", t.category);
           salesByCat[label] = (salesByCat[label] || 0) + t.amount;
           salesTotal += t.amount;
         } else {
-          const label = t.category
-            ? getCategoryLabel("in", t.category)
-            : "Lain-lain";
           modalByCat[label] = (modalByCat[label] || 0) + t.amount;
           modalTotal += t.amount;
         }
       } else {
-        const label = t.category
-          ? getCategoryLabel("out", t.category)
-          : "Lain-lain";
         expenseByCat[label] = (expenseByCat[label] || 0) + t.amount;
         expenseTotal += t.amount;
       }

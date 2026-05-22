@@ -21,7 +21,7 @@ import {
   subscribeAllTransactions,
   subscribeBooks,
 } from "../../lib/storage";
-import { getCategoryLabel } from "../../lib/categories";
+import { displayCategoryLabel } from "../../lib/categories";
 import { formatRupiah, todayISO } from "../../lib/format";
 
 // Palet warna untuk pie chart
@@ -82,9 +82,7 @@ export default function LaporanPage() {
     const map = {};
     for (const t of inRange) {
       if (t.type !== "out") continue;
-      const label = t.category
-        ? getCategoryLabel("out", t.category)
-        : "Tanpa Kategori";
+      const label = displayCategoryLabel(t) || "Tanpa Kategori";
       map[label] = (map[label] || 0) + t.amount;
     }
     return Object.entries(map)
@@ -98,9 +96,7 @@ export default function LaporanPage() {
       if (t.type !== "in") continue;
       const label = t.isOpening
         ? "Saldo Awal"
-        : t.category
-        ? getCategoryLabel("in", t.category)
-        : "Tanpa Kategori";
+        : displayCategoryLabel(t) || "Tanpa Kategori";
       map[label] = (map[label] || 0) + t.amount;
     }
     return Object.entries(map)

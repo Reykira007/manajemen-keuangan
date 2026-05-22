@@ -14,7 +14,7 @@ import {
   summarize,
   withRunningBalance,
 } from "../../../lib/storage";
-import { getCategoryLabel } from "../../../lib/categories";
+import { displayCategoryLabel, getCategoryLabel } from "../../../lib/categories";
 import { formatDate, formatRupiah } from "../../../lib/format";
 
 export default function BukuDetailPage() {
@@ -63,7 +63,7 @@ export default function BukuDetailPage() {
     return rows.filter(
       (r) =>
         r.description?.toLowerCase().includes(q) ||
-        getCategoryLabel(r.type, r.category).toLowerCase().includes(q)
+        displayCategoryLabel(r).toLowerCase().includes(q)
     );
   }, [rows, search]);
 
@@ -217,7 +217,7 @@ export default function BukuDetailPage() {
                           ) : null}
                         </td>
                         <td className="px-5 py-3 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                          {r.isOpening ? "—" : (r.category ? getCategoryLabel(r.type, r.category) : "—")}
+                          {r.isOpening ? "—" : (displayCategoryLabel(r) || "—")}
                         </td>
                         <td className="px-5 py-3 text-right text-income-700 font-medium whitespace-nowrap">
                           {r.type === "in" ? formatRupiah(r.amount) : "-"}
@@ -271,8 +271,8 @@ export default function BukuDetailPage() {
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {formatDate(r.date)}
-                          {!r.isOpening && r.category
-                            ? ` · ${getCategoryLabel(r.type, r.category)}`
+                          {!r.isOpening && displayCategoryLabel(r)
+                            ? ` · ${displayCategoryLabel(r)}`
                             : ""}
                           {!r.isOpening && r.quantity > 1 && r.unitPrice > 0
                             ? ` · ${r.quantity} × ${formatRupiah(r.unitPrice)}`
