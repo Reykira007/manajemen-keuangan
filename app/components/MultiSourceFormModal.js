@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addTransaction, subscribeBooks } from "../lib/storage";
 import { PAYMENT_SOURCES } from "../lib/sources";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastProvider";
 import { formatRupiah, todayISO } from "../lib/format";
 
 const formatGroup = (digits) =>
@@ -24,6 +25,7 @@ export default function MultiSourceFormModal({
   onSaved,
 }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const needsBookPicker = !bookId;
 
   const [date, setDate] = useState(todayISO());
@@ -128,6 +130,7 @@ export default function MultiSourceFormModal({
           unitPrice: amount,
         });
       }
+      showToast(`${totals.filledCount} transaksi tersimpan`);
       onSaved && onSaved();
       onClose();
     } catch (err) {

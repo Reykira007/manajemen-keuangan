@@ -71,7 +71,13 @@ export default function SemuaTransaksiPage() {
         const desc = (t.description || "").toLowerCase();
         const cat = displayCategoryLabel(t).toLowerCase();
         const bookName = (bookMap[t.bookId]?.name || "").toLowerCase();
-        return desc.includes(q) || cat.includes(q) || bookName.includes(q);
+        const sourceName = getSourceLabel(t.source).toLowerCase();
+        return (
+          desc.includes(q) ||
+          cat.includes(q) ||
+          bookName.includes(q) ||
+          sourceName.includes(q)
+        );
       })
       .sort((a, b) => {
         if (a.date !== b.date) return b.date.localeCompare(a.date);

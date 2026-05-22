@@ -18,7 +18,7 @@ import {
 } from "../../../lib/storage";
 import { displayCategoryLabel, getCategoryLabel } from "../../../lib/categories";
 import { getQuickActions, getTemplate } from "../../../lib/templates";
-import { getSourceIcon, getSourceLabel } from "../../../lib/sources";
+import { PAYMENT_SOURCES, getSourceIcon, getSourceLabel } from "../../../lib/sources";
 import { formatDate, formatRupiah } from "../../../lib/format";
 
 export default function BukuDetailPage() {
@@ -40,6 +40,9 @@ export default function BukuDetailPage() {
   });
   const [multiModal, setMultiModal] = useState({ open: false, preset: null });
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -79,17 +82,72 @@ export default function BukuDetailPage() {
   }, [debts]);
 
   const summary = summarize(book, txs);
-  const rows = useMemo(() => withRunningBalance(book, txs), [book, txs]);
+  const rowsRaw = useMemo(() => withRunningBalance(book, txs), [book, txs]);
+
+  // Collapse multiple "Saldo Awal" rows jadi 1 row dengan breakdown.
+  // Issue 5 fix: kalau buku punya saldo awal di 3 sumber, tabel tampil 1
+  // baris "Saldo Awal Total" dengan breakdown per-sumber di sub-text.
+  const rows = useMemo(() => {
+    const opening = rowsRaw.filter((r) => r.isOpening);
+    const rest = rowsRaw.filter((r) => !r.isOpening);
+    if (opening.length <= 1) return rowsRaw;
+    const totalAmount = opening.reduce((s, r) => s + r.amount, 0);
+    const lastRunning = opening[opening.length - 1].running;
+    const combined = {
+      id: `__opening_combined_${opening[0].bookId}`,
+      bookId: opening[0].bookId,
+      type: "in",
+      date: opening[0].date,
+      description: "Saldo Awal",
+      amount: totalAmount,
+      running: lastRunning,
+      quantity: 0,
+      unitPrice: 0,
+      createdAt: opening[0].createdAt,
+      isOpening: true,
+      openingBreakdown: opening.map((r) => ({
+        source: r.source,
+        amount: r.amount,
+      })),
+    };
+    return [combined, ...rest];
+  }, [rowsRaw]);
 
   const visibleRows = useMemo(() => {
-    if (!search.trim()) return rows;
-    const q = search.toLowerCase();
-    return rows.filter(
-      (r) =>
-        r.description?.toLowerCase().includes(q) ||
-        displayCategoryLabel(r).toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      // Source filter (skip untuk opening combined yang punya breakdown)
+      if (sourceFilter !== "all") {
+        if (r.openingBreakdown) {
+          // opening combined: cek apakah ada source yang cocok
+          const hasMatch = r.openingBreakdown.some(
+            (b) => b.source === sourceFilter
+          );
+          if (!hasMatch) return false;
+        } else if ((r.source || "cash") !== sourceFilter) {
+          return false;
+        }
+      }
+      // Date filter (skip opening, supaya tetap selalu tampil)
+      if (!r.isOpening) {
+        if (dateFrom && r.date < dateFrom) return false;
+        if (dateTo && r.date > dateTo) return false;
+      }
+      // Search
+      if (q) {
+        const desc = (r.description || "").toLowerCase();
+        const cat = displayCategoryLabel(r).toLowerCase();
+        const src = getSourceLabel(r.source).toLowerCase();
+        if (
+          !desc.includes(q) &&
+          !cat.includes(q) &&
+          !src.includes(q)
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [rows, search, sourceFilter, dateFrom, dateTo]);
 
   if (bookLoaded && !book) {
     return (
@@ -229,22 +287,65 @@ export default function BukuDetailPage() {
         />
 
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="font-semibold text-slate-900 dark:text-slate-100">
-              Riwayat Transaksi
-            </h2>
-            <div className="flex items-center gap-2">
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari keterangan / kategori..."
-                className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none w-full sm:w-64"
-              />
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-900 dark:text-slate-100">
+                Riwayat Transaksi
+              </h2>
               <span className="text-xs text-slate-500 whitespace-nowrap">
                 {visibleRows.filter((r) => !r.isOpening).length} transaksi
               </span>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari keterangan / kategori / sumber..."
+                className="sm:col-span-5 text-sm px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-income-500 outline-none"
+              />
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="sm:col-span-3 text-sm px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-income-500 outline-none"
+              >
+                <option value="all">Semua Sumber</option>
+                {PAYMENT_SOURCES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.icon} {s.shortLabel}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                placeholder="Dari"
+                title="Dari tanggal"
+                className="sm:col-span-2 text-sm px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-income-500 outline-none"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                placeholder="Sampai"
+                title="Sampai tanggal"
+                className="sm:col-span-2 text-sm px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-income-500 outline-none"
+              />
+            </div>
+            {(sourceFilter !== "all" || dateFrom || dateTo || search) ? (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setSourceFilter("all");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="text-xs text-income-700 hover:underline"
+              >
+                ✕ Reset filter
+              </button>
+            ) : null}
           </div>
 
           {!ready ? (
@@ -267,6 +368,7 @@ export default function BukuDetailPage() {
                       <th className="text-left px-5 py-3 font-medium">Tanggal</th>
                       <th className="text-left px-5 py-3 font-medium">Keterangan</th>
                       <th className="text-left px-5 py-3 font-medium">Kategori</th>
+                      <th className="text-left px-3 py-3 font-medium">Sumber</th>
                       <th className="text-right px-5 py-3 font-medium">Kas Masuk</th>
                       <th className="text-right px-5 py-3 font-medium">Kas Keluar</th>
                       <th className="text-right px-5 py-3 font-medium">Saldo</th>
@@ -289,19 +391,35 @@ export default function BukuDetailPage() {
                               {r.quantity} × {formatRupiah(r.unitPrice)}
                             </div>
                           ) : null}
+                          {r.openingBreakdown ? (
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              {r.openingBreakdown
+                                .map(
+                                  (b) =>
+                                    `${getSourceIcon(b.source)} ${formatRupiah(b.amount)}`
+                                )
+                                .join(" + ")}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-5 py-3 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                          {r.isOpening ? (
-                            "—"
+                          {r.isOpening ? "—" : displayCategoryLabel(r) || "—"}
+                        </td>
+                        <td className="px-3 py-3 text-xs whitespace-nowrap">
+                          {r.openingBreakdown ? (
+                            <span className="text-slate-400">multi</span>
+                          ) : r.source ? (
+                            <span
+                              className="text-slate-600 dark:text-slate-300"
+                              title={getSourceLabel(r.source)}
+                            >
+                              {getSourceIcon(r.source)}{" "}
+                              <span className="hidden lg:inline">
+                                {getSourceLabel(r.source)}
+                              </span>
+                            </span>
                           ) : (
-                            <div className="flex flex-col gap-0.5">
-                              <span>{displayCategoryLabel(r) || "—"}</span>
-                              {r.source ? (
-                                <span className="text-[10px]" title={getSourceLabel(r.source)}>
-                                  {getSourceIcon(r.source)} {getSourceLabel(r.source)}
-                                </span>
-                              ) : null}
-                            </div>
+                            "—"
                           )}
                         </td>
                         <td className="px-5 py-3 text-right text-income-700 font-medium whitespace-nowrap">
@@ -366,6 +484,16 @@ export default function BukuDetailPage() {
                             ? ` · ${r.quantity} × ${formatRupiah(r.unitPrice)}`
                             : ""}
                         </p>
+                        {r.openingBreakdown ? (
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {r.openingBreakdown
+                              .map(
+                                (b) =>
+                                  `${getSourceIcon(b.source)} ${formatRupiah(b.amount)}`
+                              )
+                              .join(" + ")}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="text-right shrink-0">
                         <div

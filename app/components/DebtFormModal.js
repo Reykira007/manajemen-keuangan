@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { addDebt, updateDebt } from "../lib/storage";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastProvider";
 import { formatRupiah, todayISO } from "../lib/format";
 
 const formatGroup = (digits) =>
@@ -17,6 +18,7 @@ export default function DebtFormModal({
   onSaved,
 }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isEdit = !!initial;
 
   const [type, setType] = useState(defaultType);
@@ -103,6 +105,7 @@ export default function DebtFormModal({
           note,
         });
       }
+      showToast(isEdit ? "Berhasil diperbarui" : "Berhasil disimpan");
       onSaved && onSaved();
       onClose();
     } catch (err) {

@@ -11,6 +11,7 @@ import {
 import { getCategoriesFor } from "../lib/categories";
 import { DEFAULT_SOURCE, PAYMENT_SOURCES } from "../lib/sources";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastProvider";
 import { formatRupiah, todayISO } from "../lib/format";
 
 const formatGroup = (digits) =>
@@ -26,6 +27,7 @@ export default function TransactionFormModal({
   onSaved,
 }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isEdit = !!initial;
   const actualType = initial?.type || preset?.type || type;
   const needsBookPicker = !bookId && !isEdit; // dipanggil dari FAB
@@ -172,6 +174,7 @@ export default function TransactionFormModal({
           unitPrice: unitNum,
         });
       }
+      showToast(isEdit ? "Transaksi berhasil diperbarui" : "Transaksi tersimpan");
       onSaved && onSaved();
       onClose();
     } catch (err) {
