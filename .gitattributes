@@ -1,0 +1,27 @@
+# Auto-detect text files dan normalisasi line endings ke LF saat commit.
+# Bekerja untuk semua OS (Windows, macOS, Linux).
+* text=auto eol=lf
+
+# Binary files - jangan diutak-atik
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+
+# Bahasa specifik
+*.md text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
