@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Topbar from "../../../components/Topbar";
 import TransactionFormModal from "../../../components/TransactionFormModal";
+import MultiSourceFormModal from "../../../components/MultiSourceFormModal";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   deleteBook,
@@ -37,6 +38,7 @@ export default function BukuDetailPage() {
     initial: null,
     preset: null,
   });
+  const [multiModal, setMultiModal] = useState({ open: false, preset: null });
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -212,14 +214,18 @@ export default function BukuDetailPage() {
 
         <QuickActionsBar
           book={book}
-          onAction={(action) =>
-            setModal({
-              open: true,
-              type: action.preset.type,
-              initial: null,
-              preset: action.preset,
-            })
-          }
+          onAction={(action) => {
+            if (action.preset?.multiSource) {
+              setMultiModal({ open: true, preset: action.preset });
+            } else {
+              setModal({
+                open: true,
+                type: action.preset.type,
+                initial: null,
+                preset: action.preset,
+              });
+            }
+          }}
         />
 
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
@@ -410,6 +416,13 @@ export default function BukuDetailPage() {
         onClose={() =>
           setModal({ open: false, type: modal.type, initial: null, preset: null })
         }
+      />
+
+      <MultiSourceFormModal
+        open={multiModal.open}
+        bookId={id}
+        preset={multiModal.preset}
+        onClose={() => setMultiModal({ open: false, preset: null })}
       />
     </>
   );

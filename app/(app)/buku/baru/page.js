@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Topbar from "../../../components/Topbar";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBook } from "../../../lib/storage";
 import { BOOK_TEMPLATES } from "../../../lib/templates";
+import { PAYMENT_SOURCES } from "../../../lib/sources";
+import { formatRupiah } from "../../../lib/format";
+
+const formatGroup = (digits) =>
+  digits ? new Intl.NumberFormat("id-ID").format(digits) : "";
 
 export default function BukuBaruPage() {
   const router = useRouter();
@@ -15,26 +20,38 @@ export default function BukuBaruPage() {
   const [step, setStep] = useState("template"); // 'template' | 'form'
   const [template, setTemplate] = useState(null);
 
-  // Form state
   const [name, setName] = useState("");
-  const [opening, setOpening] = useState("");
+  // Saldo awal per sumber (string values supaya formatted)
+  const [balances, setBalances] = useState({
+    cash: "",
+    bank: "",
+    ewallet: "",
+    qris: "",
+    lain: "",
+  });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const totalOpening = useMemo(
+    () =>
+      Object.values(balances).reduce(
+        (s, v) => s + (Number(v.replace(/\D/g, "")) || 0),
+        0
+      ),
+    [balances]
+  );
 
   const pickTemplate = (t) => {
     setTemplate(t);
     setName(t.defaultBookName);
-    setOpening("");
+    setBalances({ cash: "", bank: "", ewallet: "", qris: "", lain: "" });
     setError("");
     setStep("form");
   };
 
-  const backToTemplates = () => {
-    setStep("template");
-    setTemplate(null);
-    setName("");
-    setOpening("");
-    setError("");
+  const setBalance = (source, value) => {
+    const digits = value.replace(/\D/g, "");
+    setBalances((prev) => ({ ...prev, [source]: formatGroup(digits) }));
   };
 
   const onSubmit = async (e) => {
@@ -46,9 +63,14 @@ export default function BukuBaruPage() {
     if (!user) return;
     setSaving(true);
     try {
+      const cleanedBalances = {};
+      for (const [k, v] of Object.entries(balances)) {
+        const n = Number(v.replace(/\D/g, "")) || 0;
+        if (n > 0) cleanedBalances[k] = n;
+      }
       const book = await createBook(user.uid, {
         name,
-        openingBalance: Number(opening.replace(/\D/g, "")) || 0,
+        openingBalances: cleanedBalances,
         template: template?.id || "custom",
       });
       router.push(`/buku/${book.id}`);
@@ -75,20 +97,112 @@ export default function BukuBaruPage() {
         {step === "template" ? (
           <TemplateGrid onPick={pickTemplate} />
         ) : (
-          <FormView
-            template={template}
-            name={name}
-            setName={(v) => {
-              setName(v);
-              setError("");
-            }}
-            opening={opening}
-            setOpening={setOpening}
-            error={error}
-            saving={saving}
-            onSubmit={onSubmit}
-            onBack={backToTemplates}
-          />
+          <div className="max-w-xl mx-auto space-y-4">
+            {template ? (
+              <div className="bg-income-50 dark:bg-income-500/10 border border-income-100 dark:border-income-500/20 rounded-xl p-4 flex items-start gap-3">
+                <div className="text-2xl shrink-0">{template.icon}</div>
+                <div className="min-w-0">
+                  <div className="font-medium text-income-700 text-sm">
+                    {template.name}
+                  </div>
+                  <p className="text-xs text-income-700/80 dark:text-income-700/90 mt-1">
+                    {template.tips}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-8">
+              <form onSubmit={onSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    Nama Buku <span className="text-expense-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setError("");
+                    }}
+                    placeholder={
+                      template?.defaultBookName || "Contoh: Warung Bu Ani"
+                    }
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                  {error ? (
+                    <p className="text-xs text-expense-600 mt-1.5">{error}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    Saldo Awal per Sumber Dana{" "}
+                    <span className="text-slate-400">(opsional)</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                    {template?.openingBalanceHint ||
+                      "Isi sesuai uang yang sudah ada di tiap sumber. Kosongkan kalau belum ada."}
+                  </p>
+                  <div className="space-y-2">
+                    {PAYMENT_SOURCES.map((s) => (
+                      <div key={s.id} className="flex items-center gap-3">
+                        <div className="w-24 text-sm text-slate-600 dark:text-slate-300 shrink-0 flex items-center gap-1.5">
+                          <span>{s.icon}</span>
+                          <span className="truncate">{s.shortLabel}</span>
+                        </div>
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+                            Rp
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={balances[s.id]}
+                            onChange={(e) => setBalance(s.id, e.target.value)}
+                            placeholder="0"
+                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {totalOpening > 0 ? (
+                    <div className="mt-3 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Total Saldo Awal
+                      </span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {formatRupiah(totalOpening)}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("template");
+                      setTemplate(null);
+                    }}
+                    disabled={saving}
+                    className="px-4 py-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium"
+                  >
+                    ← Ganti Template
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 bg-income-600 hover:bg-income-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg"
+                  >
+                    {saving ? "Menyimpan..." : "Buat Buku"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </>
@@ -123,103 +237,6 @@ function TemplateGrid({ onPick }) {
         >
           ← Batal, kembali ke Dashboard
         </Link>
-      </div>
-    </div>
-  );
-}
-
-function FormView({
-  template,
-  name,
-  setName,
-  opening,
-  setOpening,
-  error,
-  saving,
-  onSubmit,
-  onBack,
-}) {
-  return (
-    <div className="max-w-xl mx-auto space-y-4">
-      {template ? (
-        <div className="bg-income-50 dark:bg-income-500/10 border border-income-100 dark:border-income-500/20 rounded-xl p-4 flex items-start gap-3">
-          <div className="text-2xl shrink-0">{template.icon}</div>
-          <div className="min-w-0">
-            <div className="font-medium text-income-700 text-sm">
-              {template.name}
-            </div>
-            <p className="text-xs text-income-700/80 dark:text-income-700/90 mt-1">
-              {template.tips}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-8">
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Nama Buku <span className="text-expense-600">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={template?.defaultBookName || "Contoh: Warung Bu Ani"}
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100"
-              autoFocus
-            />
-            {error ? (
-              <p className="text-xs text-expense-600 mt-1.5">{error}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Saldo Awal <span className="text-slate-400">(opsional)</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                Rp
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={opening}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "");
-                  setOpening(
-                    digits ? new Intl.NumberFormat("id-ID").format(digits) : ""
-                  );
-                }}
-                placeholder="0"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-income-500 focus:ring-2 focus:ring-income-100 outline-none text-slate-900 dark:text-slate-100"
-              />
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-              {template?.openingBalanceHint ||
-                "Jumlah uang yang sudah ada saat buku dibuat. Ikut dihitung sebagai Kas Masuk."}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onBack}
-              disabled={saving}
-              className="px-4 py-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium"
-            >
-              ← Ganti Template
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 bg-income-600 hover:bg-income-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg"
-            >
-              {saving ? "Menyimpan..." : "Buat Buku"}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

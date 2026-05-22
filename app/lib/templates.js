@@ -72,15 +72,15 @@ export const BOOK_TEMPLATES = [
     quickActions: [
       {
         id: "penjualan-harian",
-        label: "Penjualan Hari Ini",
+        label: "Tutup Hari (Multi-Bayar)",
         icon: "💰",
         tone: "income",
         preset: {
           type: "in",
           category: "penjualan",
           description: "Penjualan hari ini",
-          simpleMode: true,
-          title: "Catat Penjualan Hari Ini",
+          multiSource: true,
+          title: "Tutup Hari — Penjualan",
         },
       },
       {
@@ -121,15 +121,15 @@ export const BOOK_TEMPLATES = [
     quickActions: [
       {
         id: "penjualan-harian",
-        label: "Penjualan Hari Ini",
+        label: "Tutup Hari (Multi-Bayar)",
         icon: "💰",
         tone: "income",
         preset: {
           type: "in",
           category: "penjualan",
           description: "Penjualan pulsa & aksesoris hari ini",
-          simpleMode: true,
-          title: "Catat Penjualan Hari Ini",
+          multiSource: true,
+          title: "Tutup Hari — Konter",
         },
       },
       {
@@ -245,15 +245,15 @@ export const BOOK_TEMPLATES = [
     quickActions: [
       {
         id: "pemasukan-harian",
-        label: "Pemasukan Hari Ini",
+        label: "Tutup Hari (Multi-Bayar)",
         icon: "💰",
         tone: "income",
         preset: {
           type: "in",
           category: "penjualan",
           description: "Pemasukan jasa hari ini",
-          simpleMode: true,
-          title: "Catat Pemasukan Hari Ini",
+          multiSource: true,
+          title: "Tutup Hari — Jasa",
         },
       },
       {

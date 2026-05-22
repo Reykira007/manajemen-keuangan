@@ -5,10 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Topbar from "../../../../components/Topbar";
 import DebtFormModal from "../../../../components/DebtFormModal";
+import MarkDebtPaidModal from "../../../../components/MarkDebtPaidModal";
 import { useAuth } from "../../../../components/AuthProvider";
 import {
   deleteDebt,
-  markDebtPaid,
   subscribeBook,
   subscribeBookDebts,
 } from "../../../../lib/storage";
@@ -25,6 +25,7 @@ export default function HutangPiutangPage() {
   const [tab, setTab] = useState("piutang"); // 'piutang' | 'hutang'
   const [showLunas, setShowLunas] = useState(false);
   const [modal, setModal] = useState({ open: false, initial: null });
+  const [paidModal, setPaidModal] = useState({ open: false, debt: null });
 
   useEffect(() => {
     if (!user) return;
@@ -57,22 +58,8 @@ export default function HutangPiutangPage() {
     return byType;
   }, [debts]);
 
-  const onMarkPaid = async (debt) => {
-    const desc = debt.type === "piutang" ? "menerima pelunasan" : "membayar";
-    if (
-      !confirm(
-        `Tandai LUNAS: ${desc} ${formatRupiah(debt.amount)} ` +
-          `${debt.type === "piutang" ? "dari" : "ke"} ${debt.counterpart}?\n\n` +
-          `Otomatis dibuat transaksi ${debt.type === "piutang" ? "Kas Masuk" : "Kas Keluar"} ` +
-          `tanggal hari ini.`
-      )
-    )
-      return;
-    try {
-      await markDebtPaid(user.uid, debt.id, { paidDate: todayISO() });
-    } catch (err) {
-      alert("Gagal: " + (err.message || ""));
-    }
+  const onMarkPaid = (debt) => {
+    setPaidModal({ open: true, debt });
   };
 
   const onDelete = async (debt) => {
@@ -198,6 +185,12 @@ export default function HutangPiutangPage() {
         defaultType={tab}
         initial={modal.initial}
         onClose={() => setModal({ open: false, initial: null })}
+      />
+
+      <MarkDebtPaidModal
+        open={paidModal.open}
+        debt={paidModal.debt}
+        onClose={() => setPaidModal({ open: false, debt: null })}
       />
     </>
   );
