@@ -1,0 +1,16 @@
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# Sesuaikan kalau Anda punya akun di platform sponsorship.
+# Yang di-comment biarkan saja.
+
+github: [Reykira007]
+# patreon: # username
+# open_collective: # username
+# ko_fi: # username
+# tidelift: # platform-name/package-name
+# community_bridge: # project-name
+# liberapay: # username
+# issuehunt: # username
+# otechie: # username
+# lfx_crowdfunding: # funding-id
+# custom: # ['https://example.com/donate', 'https://example.com/sponsor']
