@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { formatRupiah, formatDate } from "../lib/format";
 import { getTemplate } from "../lib/templates";
 
@@ -53,16 +54,16 @@ export default function BookCard({ book, summary }) {
 
       <div className="grid grid-cols-2 gap-3 mt-4">
         <div className="rounded-lg bg-income-50 dark:bg-income-500/10 p-3">
-          <div className="text-[11px] text-income-700 font-medium">
-            Kas Masuk
+          <div className="text-[11px] text-income-700 font-medium flex items-center gap-1">
+            <ArrowUpRight className="w-3 h-3" /> Kas Masuk
           </div>
           <div className="text-sm font-semibold text-income-700 mt-0.5 truncate">
             {formatRupiah(summary.totalIn)}
           </div>
         </div>
         <div className="rounded-lg bg-expense-50 dark:bg-expense-500/10 p-3">
-          <div className="text-[11px] text-expense-700 font-medium">
-            Kas Keluar
+          <div className="text-[11px] text-expense-700 font-medium flex items-center gap-1">
+            <ArrowDownRight className="w-3 h-3" /> Kas Keluar
           </div>
           <div className="text-sm font-semibold text-expense-700 mt-0.5 truncate">
             {formatRupiah(summary.totalOut)}

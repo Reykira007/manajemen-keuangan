@@ -20,6 +20,8 @@ import { displayCategoryLabel, getCategoryLabel } from "../../../lib/categories"
 import { getQuickActions, getTemplate } from "../../../lib/templates";
 import { PAYMENT_SOURCES, getSourceIcon, getSourceLabel } from "../../../lib/sources";
 import { formatDate, formatRupiah } from "../../../lib/format";
+import EmptyState from "../../../components/EmptyState";
+import { SkeletonList } from "../../../components/Skeleton";
 
 export default function BukuDetailPage() {
   const router = useRouter();
@@ -349,15 +351,26 @@ export default function BukuDetailPage() {
           </div>
 
           {!ready ? (
-            <div className="p-8 text-sm text-slate-400">Memuat...</div>
+            <SkeletonList count={5} />
           ) : visibleRows.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="text-sm text-slate-500">
-                {search
-                  ? "Tidak ada transaksi yang cocok."
-                  : "Belum ada transaksi. Tambahkan kas masuk atau kas keluar untuk memulai."}
-              </p>
-            </div>
+            <EmptyState
+              variant={
+                search || sourceFilter !== "all" || dateFrom || dateTo
+                  ? "search"
+                  : "transaction"
+              }
+              title={
+                search || sourceFilter !== "all" || dateFrom || dateTo
+                  ? "Tidak ada hasil"
+                  : "Belum ada transaksi"
+              }
+              description={
+                search || sourceFilter !== "all" || dateFrom || dateTo
+                  ? "Coba ganti atau reset filter di atas."
+                  : "Klik tombol aksi di atas (Tutup Hari, Belanja Stok, dll) untuk mulai catat transaksi."
+              }
+              className="!border-0 !rounded-none"
+            />
           ) : (
             <>
               {/* Desktop */}

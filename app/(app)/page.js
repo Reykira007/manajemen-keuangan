@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "../components/Topbar";
 import BookCard from "../components/BookCard";
+import EmptyState from "../components/EmptyState";
+import { SkeletonBookGrid } from "../components/Skeleton";
 import { useAuth } from "../components/AuthProvider";
 import {
   subscribeAllTransactions,
@@ -85,9 +87,15 @@ export default function DashboardPage() {
           </div>
 
           {!ready ? (
-            <div className="text-sm text-slate-400">Memuat...</div>
+            <SkeletonBookGrid count={3} />
           ) : items.length === 0 ? (
-            <EmptyState />
+            <EmptyState
+              variant="book"
+              title="Belum ada buku"
+              description="Buat buku pertama Anda untuk mulai mencatat keuangan. Pilih dari 8 template (Warung, Konter, Bangunan, Pribadi, dll)."
+              ctaLabel="Buat Buku Pertama"
+              ctaHref="/buku/baru"
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map(({ book, summary }) => (
@@ -98,38 +106,5 @@ export default function DashboardPage() {
         </section>
       </div>
     </>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center">
-      <div className="w-12 h-12 mx-auto rounded-full bg-income-50 text-income-700 grid place-items-center">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-6 h-6"
-        >
-          <path d="M4 7h16M4 12h16M4 17h10" />
-        </svg>
-      </div>
-      <h3 className="mt-4 font-semibold text-slate-900 dark:text-slate-100">
-        Belum ada buku
-      </h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-        Buat buku pertama Anda untuk mulai mencatat pemasukan dan pengeluaran.
-      </p>
-      <Link
-        href="/buku/baru"
-        className="inline-flex items-center gap-2 mt-5 bg-income-600 hover:bg-income-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg"
-      >
-        Buat Buku Baru
-      </Link>
-    </div>
   );
 }
