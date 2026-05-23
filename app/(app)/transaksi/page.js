@@ -11,6 +11,8 @@ import {
 } from "../../lib/storage";
 import { displayCategoryLabel, getCategoryLabel } from "../../lib/categories";
 import { PAYMENT_SOURCES, getSourceIcon, getSourceLabel } from "../../lib/sources";
+import EmptyState from "../../components/EmptyState";
+import { SkeletonList } from "../../components/Skeleton";
 import { formatDate, formatRupiah } from "../../lib/format";
 
 export default function SemuaTransaksiPage() {
@@ -225,13 +227,22 @@ export default function SemuaTransaksiPage() {
 
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
           {!ready ? (
-            <div className="p-8 text-sm text-slate-400">Memuat...</div>
+            <SkeletonList count={6} />
           ) : filtered.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="text-sm text-slate-500">
-                Tidak ada transaksi yang cocok dengan filter.
-              </p>
-            </div>
+            <EmptyState
+              variant={search || sourceFilter !== "all" ? "search" : "transaction"}
+              title={
+                search || sourceFilter !== "all"
+                  ? "Tidak ada hasil"
+                  : "Belum ada transaksi"
+              }
+              description={
+                search || sourceFilter !== "all"
+                  ? "Coba ganti filter atau kata kunci pencarian."
+                  : "Buka buku Anda lalu klik tombol Quick Action untuk mulai catat transaksi."
+              }
+              className="!border-0 !rounded-none"
+            />
           ) : (
             <>
               <div className="hidden md:block overflow-x-auto">

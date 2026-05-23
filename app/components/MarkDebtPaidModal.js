@@ -64,11 +64,11 @@ export default function MarkDebtPaidModal({ open, debt, onClose, onSaved }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 bg-slate-900/40 dark:bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4"
+      className="fixed inset-0 z-40 bg-slate-900/40 dark:bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 modal-backdrop"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-2xl md:rounded-2xl shadow-xl"
+        className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-2xl md:rounded-2xl shadow-xl modal-content-mobile md:animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
